@@ -17,8 +17,8 @@ using namespace osgEarth::Util;
 
 int main(int argc, char *argv[]) {
     //初始化QGIS应用，前缀路径修改为 qgis 的安装路径
+    QgsApplication::setPrefixPath("/usr", true);
     QgsApplication app(argc, argv, true);
-    QgsApplication::setPrefixPath("G:/program/osgeo4w/apps/qgis-ltr-dev", true);
     QgsApplication::initQgis();
 
     // 初始化 osgEarth
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
                          return 0;
                      });
 
-    // qgis widget，加载 world.shp
+    // qgis widget，加载 world.tif
     QgsMapCanvas *mapCanvas = new QgsMapCanvas;
     QList<QgsMapLayer *> layers;
     QString fileName = "./data/world.shp";
