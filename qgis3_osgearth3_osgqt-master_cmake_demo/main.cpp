@@ -16,8 +16,10 @@
 using namespace osgEarth::Util;
 
 int main(int argc, char *argv[]) {
+    osg::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
+
     //初始化QGIS应用，前缀路径修改为 qgis 的安装路径
-    QgsApplication::setPrefixPath("/usr", true);
+    QgsApplication::setPrefixPath("C:/OSGeo4W/apps/qgis-ltr", true);
     QgsApplication app(argc, argv, true);
     QgsApplication::initQgis();
 

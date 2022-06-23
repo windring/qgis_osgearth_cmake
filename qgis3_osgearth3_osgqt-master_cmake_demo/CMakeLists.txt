@@ -18,10 +18,10 @@ message(STATUS "Find libraries suffixes: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 
 list(APPEND CMAKE_MODULE_PATH "${${PROJECT_NAME}_SOURCE_DIR}/CMakeModules")
 
-set(OUR_DEV_PACKAGE "/home/titor/vcpkg/installed/x64-linux")
-set(ENV{OSGEO4W_ROOT} "G:/program/osgeo4w")
-set(OSGEO4W_QGIS_SUBDIR "qgis-ltr-dev")
-set(Qt5_DIR "G:/program/osgeo4w/apps/Qt5/lib/cmake/Qt5")
+set(OUR_DEV_PACKAGE "C:/dev/vcpkg/installed/x64-windows")
+set(ENV{OSGEO4W_ROOT} "C:/Program Files/QGIS 3.22.7")
+set(OSGEO4W_QGIS_SUBDIR "qgis-ltr")
+set(Qt5_DIR "C:/OSGeo4W/apps/Qt5/lib/cmake/Qt5")
 set(OSG_DIR "${OUR_DEV_PACKAGE}")
 set(OSGEARTH_DIR "${OUR_DEV_PACKAGE}")
 # set(GEOS_DIR "${OUR_DEV_PACKAGE}")
@@ -296,7 +296,7 @@ if(WIN32)
     message(STATUS "Copy platforms file to ${OUR_OUT_DIR}")
     add_custom_target(
             copy_platforms
-            COMMAND ${CMAKE_COMMAND} -E copy_directory /usr/lib/x86_64-linux-gnu/qt5/plugins/platforms "${OUR_OUT_DIR}/platforms"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${QT_PLATFORMS_DIR} "${OUR_OUT_DIR}/platforms"
     )
     add_dependencies(${PROJECT_NAME} copy_platforms)
 endif(WIN32)
