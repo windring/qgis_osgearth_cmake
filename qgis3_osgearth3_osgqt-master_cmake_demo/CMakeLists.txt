@@ -8,7 +8,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_definitions(-D_USE_MATH_DEFINES)
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
@@ -19,11 +19,12 @@ message(STATUS "Find libraries suffixes: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 list(APPEND CMAKE_MODULE_PATH "${${PROJECT_NAME}_SOURCE_DIR}/CMakeModules")
 
 set(OUR_DEV_PACKAGE "C:/dev/vcpkg/installed/x64-windows")
-set(ENV{OSGEO4W_ROOT} "C:/Program Files/QGIS 3.22.7")
-set(OSGEO4W_QGIS_SUBDIR "qgis-ltr")
-set(Qt5_DIR "C:/OSGeo4W/apps/Qt5/lib/cmake/Qt5")
+set(ENV{OSGEO4W_ROOT} "D:/program/osgeo4w/")
+set(OSGEO4W_QGIS_SUBDIR "qgis-ltr-dev")
+set(Qt5_DIR "D:/program/osgeo4w/apps/Qt5/lib/cmake/Qt5")
 set(OSG_DIR "${OUR_DEV_PACKAGE}")
 set(OSGEARTH_DIR "${OUR_DEV_PACKAGE}")
+set(GDAL_DIR "${OUR_DEV_PACKAGE}")
 # set(GEOS_DIR "${OUR_DEV_PACKAGE}")
 # set(PostgreSQL_ROOT "C:/Program Files/PostgreSQL")
 
@@ -159,7 +160,7 @@ link_directories("${OUR_DEV_PACKAGE}/lib/"
 add_executable(${PROJECT_NAME}
         main.cpp
         ${OSGQOPENGL_SRC}
-        )
+        MultiLayerTileMap/MapLayerManager.cpp MultiLayerTileMap/MapLayerManager.h)
 
 if(UNIX AND NOT APPLE)
     # linux
@@ -263,11 +264,11 @@ target_link_libraries(${PROJECT_NAME}
         ${OPENTHREADS_LIBRARY}
         ${QGIS_CORE_LIBRARY}
         ${QGIS_GUI_LIBRARY}
-         Qt5::Core
-         Qt5::Widgets
-         Qt5::Xml
-         Qt5::OpenGL
-         Qt5::Gui
+        Qt5::Core
+        Qt5::Widgets
+        Qt5::Xml
+        Qt5::OpenGL
+        Qt5::Gui
         # ${GEOS_LIBRARY}
         ${LINUX_ADDITION_LINK}
         )

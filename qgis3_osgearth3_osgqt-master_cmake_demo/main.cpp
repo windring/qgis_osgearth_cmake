@@ -1,16 +1,17 @@
 //
 // Created by TictorDC on 2022/5/27.
 //
-#include <QLayout>
 #include <osgViewer/Viewer>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osg/GraphicsContext>
+#include <QLayout>
 #include <QAction>
+#include <QApplication>
 #include <QMessageBox>
-#include <qgsapplication.h>
-#include <qgsmapcanvas.h>
-#include <qgsvectorlayer.h>
+//#include <qgsapplication.h>
+//#include <qgsmapcanvas.h>
+//#include <qgsvectorlayer.h>
 #include "osgQOpenGL/osgQOpenGLWidget.h"
 
 using namespace osgEarth::Util;
@@ -18,10 +19,12 @@ using namespace osgEarth::Util;
 int main(int argc, char *argv[]) {
     osg::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
 
-    //初始化QGIS应用，前缀路径修改为 qgis 的安装路径
-    QgsApplication::setPrefixPath("C:/OSGeo4W/apps/qgis-ltr", true);
-    QgsApplication app(argc, argv, true);
-    QgsApplication::initQgis();
+//    //初始化QGIS应用，前缀路径修改为 qgis 的安装路径
+//    QgsApplication::setPrefixPath("D:\\program\\osgeo4w\\apps\\qgis-ltr", true);
+//    QgsApplication app(argc, argv, true);
+//    QgsApplication::initQgis();
+
+    QApplication app(argc, argv);
 
     // 初始化 osgEarth
     osgEarth::initialize();
@@ -49,23 +52,23 @@ int main(int argc, char *argv[]) {
                          return 0;
                      });
 
-    // qgis widget，加载 world.tif
-    QgsMapCanvas *mapCanvas = new QgsMapCanvas;
-    QList<QgsMapLayer *> layers;
-    QString fileName = "./data/world.shp";
-    QString basename = "world.shp";
-    QgsVectorLayer* vecLayer = new QgsVectorLayer(fileName, basename, "ogr");
-    if (!vecLayer->isValid())
-    {
-        QMessageBox::critical(mapCanvas, "error", QString("layer is invalid: \n") + fileName);
-    }
-    mapCanvas->setExtent(vecLayer->extent());
-    layers.append(vecLayer);
-    mapCanvas->setLayers(layers);
-    mapCanvas->refresh();
+//    // qgis widget，加载 world.tif
+//    QgsMapCanvas *mapCanvas = new QgsMapCanvas;
+//    QList<QgsMapLayer *> layers;
+//    QString fileName = "./data/world.shp";
+//    QString basename = "world.shp";
+//    QgsVectorLayer* vecLayer = new QgsVectorLayer(fileName, basename, "ogr");
+//    if (!vecLayer->isValid())
+//    {
+//        QMessageBox::critical(mapCanvas, "error", QString("layer is invalid: \n") + fileName);
+//    }
+//    mapCanvas->setExtent(vecLayer->extent());
+//    layers.append(vecLayer);
+//    mapCanvas->setLayers(layers);
+//    mapCanvas->refresh();
 
     // 设置布局
-    mainLayout->addWidget(mapCanvas);
+//    mainLayout->addWidget(mapCanvas);
     mainLayout->addWidget(&widget);
 
     // 显示
