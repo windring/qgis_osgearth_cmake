@@ -159,8 +159,7 @@ link_directories("${OUR_DEV_PACKAGE}/lib/"
 
 add_executable(${PROJECT_NAME}
         main.cpp
-        ${OSGQOPENGL_SRC}
-        MultiLayerTileMap/MapLayerManager.cpp MultiLayerTileMap/MapLayerManager.h)
+        ${OSGQOPENGL_SRC})
 
 if(UNIX AND NOT APPLE)
     # linux
@@ -242,8 +241,7 @@ if(UNIX AND NOT APPLE)
     )
 endif()
 
-
-target_link_libraries(${PROJECT_NAME}
+set(LINK_LIBS
         ${OSGEARTH_LIBRARY}
         ${OSG_LIBRARY}
         ${OSGGA_LIBRARY}
@@ -270,8 +268,9 @@ target_link_libraries(${PROJECT_NAME}
         Qt5::OpenGL
         Qt5::Gui
         # ${GEOS_LIBRARY}
-        ${LINUX_ADDITION_LINK}
-        )
+        ${LINUX_ADDITION_LINK})
+
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 
 get_target_property(CURRENT_LINK_LIBRARIES ${PROJECT_NAME} LINK_LIBRARIES)
 message(STATUS "CURRENT_LINK_LIBRARIES: ${CURRENT_LINK_LIBRARIES}")
@@ -301,3 +300,14 @@ if(WIN32)
     )
     add_dependencies(${PROJECT_NAME} copy_platforms)
 endif(WIN32)
+
+enable_testing()
+add_subdirectory(tests)
+message(STATUS "tests: ${TILEMAP_TESTS_SRC}")
+add_executable(TileMapTests
+        ${OSGQOPENGL_SRC}
+        MultiLayerTileMap/MapLayerManager.cpp
+        MultiLayerTileMap/MapLayerManager.h
+        tests/main.cpp)
+target_link_libraries(TileMapTests ${LINK_LIBS})
+add_test(NAME TileMapTests COMMAND TileMapTests "-v normal")

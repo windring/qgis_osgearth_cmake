@@ -2,10 +2,6 @@
 // Created by TictorDC on 2022/6/22.
 //
 
-#include "MapLayerManager.h"
-
-namespace MultiLayerTileMap {
-
 #include <osgEarth/Style>
 #include <osgEarth/ModelNode>
 #include <osgEarth/EarthManipulator>
@@ -13,31 +9,35 @@ namespace MultiLayerTileMap {
 #include <osgEarth/GDAL>
 #include <osgDB/ReadFile>
 
-    using namespace osgEarth;
-    using namespace osg;
-    using namespace osgDB;
-    using namespace std;
+#include "MapLayerManager.h"
+
+using namespace osgEarth;
+using namespace osg;
+using namespace osgDB;
+using namespace std;
+
+namespace MultiLayerTileMap {
 
     bool MapLayerManager::addEntity(osg::Group *entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll) {
         return addEntity(entityNode->asNode(), lonLatAlt, picHeadingRoll);
     }
 
     bool MapLayerManager::addEntity(osg::Node *entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll) {
-        if (entityNode==nullptr) {
+        if (entityNode == nullptr) {
             return false;
         }
         if (!mapNode.valid()) {
             return false;
         }
         Style style;
-        auto* modelSymbol = style.getOrCreate<ModelSymbol>();
+        auto *modelSymbol = style.getOrCreate<ModelSymbol>();
         modelSymbol->pitch() = picHeadingRoll.x();
         modelSymbol->heading() = picHeadingRoll.y();
         modelSymbol->roll() = picHeadingRoll.z();
         modelSymbol->setModel(entityNode);
         // TODO: maybe we can use osg::ref_ptr
-        ModelNode* modelNode = new ModelNode(mapNode, style, nullptr);
-        const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
+        ModelNode *modelNode = new ModelNode(mapNode, style, nullptr);
+        const SpatialReference *geoSRS = mapNode->getMapSRS()->getGeographicSRS();
         modelNode->setPosition(GeoPoint(geoSRS, lonLatAlt, AltitudeMode::ALTMODE_RELATIVE));
         mapNode->addChild(modelNode);
         return true;
@@ -71,8 +71,8 @@ namespace MultiLayerTileMap {
             return false;
         }
         mapNode->open(); // TODO: 这行是否必要？
-        Map* map = mapNode->getMap();
-        Layer* layer = map->getLayerByName(layerName);
+        Map *map = mapNode->getMap();
+        Layer *layer = map->getLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
             return false;
@@ -86,7 +86,7 @@ namespace MultiLayerTileMap {
             // 没有地图图层
             return false;
         }
-        GDALImageLayer* imagery = new GDALImageLayer();
+        GDALImageLayer *imagery = new GDALImageLayer();
         imagery->setURL(fileUrl);
         Status status = imagery->open();
         if (status.isError()) {
@@ -94,7 +94,7 @@ namespace MultiLayerTileMap {
             return false;
         }
         mapNode->open();
-        Map* map = mapNode->getMap();
+        Map *map = mapNode->getMap();
         map->addLayer(imagery);
         return true;
     }
@@ -104,7 +104,7 @@ namespace MultiLayerTileMap {
             // 没有地图图层
             return false;
         }
-        GDALImageLayer* imagery = new GDALElevationLayer();
+        GDALElevationLayer *imagery = new GDALElevationLayer();
         imagery->setURL(fileUrl);
         Status status = imagery->open();
         if (status.isError()) {
@@ -112,7 +112,7 @@ namespace MultiLayerTileMap {
             return false;
         }
         mapNode->open();
-        Map* map = mapNode->getMap();
+        Map *map = mapNode->getMap();
         map->addLayer(imagery);
         return true;
     }
@@ -123,8 +123,8 @@ namespace MultiLayerTileMap {
             return false;
         }
         mapNode->open(); // TODO: 这行是否必要？
-        Map* map = mapNode->getMap();
-        Layer* layer = map->getLayerByName(layerName);
+        Map *map = mapNode->getMap();
+        Layer *layer = map->getLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
             return false;

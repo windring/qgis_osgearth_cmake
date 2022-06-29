@@ -5,13 +5,13 @@
 #ifndef TILEMAPMANAGERDEMO_MAPLAYERMANAGER_H
 #define TILEMAPMANAGERDEMO_MAPLAYERMANAGER_H
 
-namespace MultiLayerTileMap {
-
 #include <osg/Node>
 #include <osg/Group>
 #include <osg/Vec3d>
 #include <osgEarth/MapNode>
 #include <string>
+
+namespace MultiLayerTileMap {
 
     class MapLayerManager {
 
@@ -20,6 +20,24 @@ namespace MultiLayerTileMap {
         osg::ref_ptr<osgEarth::MapNode> mapNode;
 
     public:
+        MapLayerManager() {}
+
+        MapLayerManager(std::string file) {
+            loadEarthFile(file);
+        }
+
+        /// 返回主节点（地球节点）的智能指针
+        /// \return 主节点的智能指针
+        osg::ref_ptr<osg::Node> getRootNode() {
+            return rootNode;
+        }
+
+        /// 返回地图节点的智能指针
+        /// \return 地图节点的智能指针
+        osg::ref_ptr<osgEarth::MapNode> getMapNode() {
+            return mapNode;
+        }
+
         /// 加载指定的 .earth 文件
         /// \param file
         /// \return .earth 文件是否成功加载
@@ -34,7 +52,7 @@ namespace MultiLayerTileMap {
         /// \return 实体是否添加成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool addEntity(osg:: Group* entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll);
+        bool addEntity(osg::Group *entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll);
 
         /// 实体添加函数，传入类型为 osg 叶节点
         /// \param entityNode 实体模型节点
@@ -43,7 +61,7 @@ namespace MultiLayerTileMap {
         /// \return 实体是否添加成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool addEntity(osg::Node* entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll);
+        bool addEntity(osg::Node *entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll);
 
         /// 显示指定名字的地球地图图层
         /// \param layerName 图层的名字
