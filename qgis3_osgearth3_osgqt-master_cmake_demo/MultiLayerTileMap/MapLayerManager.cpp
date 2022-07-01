@@ -36,14 +36,14 @@ namespace MultiLayerTileMap {
         modelSymbol->roll() = picHeadingRoll.z();
         modelSymbol->setModel(entityNode);
         // TODO: maybe we can use osg::ref_ptr
-        ModelNode *modelNode = new ModelNode(mapNode, style, nullptr);
+        auto *modelNode = new ModelNode(mapNode, style, nullptr);
         const SpatialReference *geoSRS = mapNode->getMapSRS()->getGeographicSRS();
-        modelNode->setPosition(GeoPoint(geoSRS, lonLatAlt, AltitudeMode::ALTMODE_RELATIVE));
+        modelNode->setPosition(GeoPoint(geoSRS, lonLatAlt, AltitudeMode::ALTMODE_ABSOLUTE));
         mapNode->addChild(modelNode);
         return true;
     }
 
-    bool MapLayerManager::loadEarthFile(std::string filePath) {
+    bool MapLayerManager::loadEarthFile(const string& filePath) {
         rootNode = readNodeFile(filePath);
         if (!rootNode.valid()) {
             // 读取文件失败
@@ -57,22 +57,16 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::showMapLayer(string layerName) {
+    bool MapLayerManager::showMapLayer(const string& layerName) {
         return setMapLayerVisibility(layerName, true);
     }
 
-    bool MapLayerManager::hideMapLayer(std::string layerName) {
+    bool MapLayerManager::hideMapLayer(const string& layerName) {
         return setMapLayerVisibility(layerName, false);
     }
 
-    bool MapLayerManager::setMapLayerVisibility(std::string layerName, bool visibility) {
-        if (!mapNode.valid()) {
-            // 没有地图图层
-            return false;
-        }
-        mapNode->open(); // TODO: 这行是否必要？
-        Map *map = mapNode->getMap();
-        Layer *layer = map->getLayerByName(layerName);
+    bool MapLayerManager::setMapLayerVisibility(const string& layerName, bool visibility) {
+        Layer *layer = findLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
             return false;
@@ -81,13 +75,19 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::addImageLayer(std::string fileUrl, std::string layerName) {
+    bool MapLayerManager::addImageLayer(const string& fileUrl,
+                                        const string& layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
             return false;
         }
-        GDALImageLayer *imagery = new GDALImageLayer();
+        if (findLayerByName(layerName) != nullptr) {
+            // 已经存在这个名字的地图图层
+            return false;
+        }
+        auto *imagery = new GDALImageLayer();
         imagery->setURL(fileUrl);
+        imagery->setName(layerName);
         Status status = imagery->open();
         if (status.isError()) {
             // 图层有误
@@ -99,37 +99,46 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::addElevationLayer(std::string fileUrl, std::string layerName) {
+    bool MapLayerManager::addElevationLayer(const string& fileUrl,
+                                            const string& layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
             return false;
         }
-        GDALElevationLayer *imagery = new GDALElevationLayer();
-        imagery->setURL(fileUrl);
-        Status status = imagery->open();
+        auto *dem = new GDALElevationLayer();
+        dem->setURL(fileUrl);
+        dem->setName(layerName);
+        Status status = dem->open();
         if (status.isError()) {
             // 图层有误
             return false;
         }
         mapNode->open();
         Map *map = mapNode->getMap();
-        map->addLayer(imagery);
+        map->addLayer(dem);
         return true;
     }
 
-    bool MapLayerManager::delLayerByName(std::string layerName) {
-        if (!mapNode.valid()) {
-            // 没有地图图层
-            return false;
-        }
-        mapNode->open(); // TODO: 这行是否必要？
-        Map *map = mapNode->getMap();
-        Layer *layer = map->getLayerByName(layerName);
+    bool MapLayerManager::delLayerByName(const string& layerName) {
+        Layer *layer = findLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
             return false;
         }
+        mapNode->open(); // TODO: 这行是否必要？
+        Map *map = mapNode->getMap();
         map->removeLayer(layer);
-        return false;
+        return true;
+    }
+
+    Layer *MapLayerManager::findLayerByName(const string& layerName) {
+        if (!mapNode.valid()) {
+            // 没有地图图层
+            return nullptr;
+        }
+        mapNode->open(); // TODO: 这行是否必要？
+        Map *map = mapNode->getMap();
+        Layer *layer = map->getLayerByName(layerName);
+        return layer;
     }
 } // MultiLayerTileMap

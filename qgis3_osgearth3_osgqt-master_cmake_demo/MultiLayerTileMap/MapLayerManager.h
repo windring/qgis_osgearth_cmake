@@ -9,6 +9,7 @@
 #include <osg/Group>
 #include <osg/Vec3d>
 #include <osgEarth/MapNode>
+#include <osgEarth/Layer>
 #include <string>
 
 namespace MultiLayerTileMap {
@@ -22,7 +23,7 @@ namespace MultiLayerTileMap {
     public:
         MapLayerManager() {}
 
-        MapLayerManager(std::string file) {
+        MapLayerManager(const std::string& file) {
             loadEarthFile(file);
         }
 
@@ -43,7 +44,7 @@ namespace MultiLayerTileMap {
         /// \return .earth 文件是否成功加载
         ///     \retval true 是
         ///     \retval false 否
-        bool loadEarthFile(std::string file);
+        bool loadEarthFile(const std::string& file);
 
         /// 实体添加函数，传入类型为 osg 组节点
         /// \param entityNode 实体模型节点
@@ -68,14 +69,14 @@ namespace MultiLayerTileMap {
         /// \return 图层是否显示成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool showMapLayer(std::string layerName);
+        bool showMapLayer(const std::string& layerName);
 
         /// 隐藏指定名字的地球地图图层
         /// \param layerName 图层的名字
         /// \return 图层是否隐藏成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool hideMapLayer(std::string layerName);
+        bool hideMapLayer(const std::string& layerName);
 
         /// 设置指定名字的地球地图图层的可见性
         /// \param layerName 图层的名字
@@ -83,7 +84,7 @@ namespace MultiLayerTileMap {
         /// \return 可见性是否设置成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool setMapLayerVisibility(std::string layerName, bool visibility);
+        bool setMapLayerVisibility(const std::string& layerName, bool visibility);
 
         /// 在当前地球地图中添加普通图片层
         /// \param fileUrl 图片路径
@@ -91,7 +92,7 @@ namespace MultiLayerTileMap {
         /// \return 图层添加是否成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool addImageLayer(std::string fileUrl, std::string layerName);
+        bool addImageLayer(const std::string& fileUrl, const std::string& layerName);
 
         /// 在当前地球地图中添加普通高程数据层
         /// \param fileUrl 高程数据路径
@@ -99,14 +100,21 @@ namespace MultiLayerTileMap {
         /// \return 高程数据层添加是否成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool addElevationLayer(std::string fileUrl, std::string layerName);
+        bool addElevationLayer(const std::string& fileUrl, const std::string& layerName);
 
         /// 删除指定名字的图层
         /// \param layerName 图层名字
         /// \return 删除是否成功
         ///     \retval true 成功
         ///     \retval false 失败
-        bool delLayerByName(std::string layerName);
+        bool delLayerByName(const std::string& layerName);
+
+        /// 根据指定的图层名字查找地图图层
+        /// \param layerName 图层名字
+        /// \return 所查找的图层
+        ///     \retval nullptr 查找失败，没有找到指定的图层
+        ///     \retval 非空 指向地图图层的指针
+        osgEarth::Layer* findLayerByName(const std::string& layerName);
     };
 
 } // MultiLayerTileMap
