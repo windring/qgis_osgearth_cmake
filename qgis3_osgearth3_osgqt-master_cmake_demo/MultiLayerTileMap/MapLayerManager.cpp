@@ -4,15 +4,24 @@
 
 #include <osgEarth/Style>
 #include <osgEarth/ModelNode>
-#include <osgEarth/EarthManipulator>
-#include <osgEarth/ImageLayer>
+#include <osgEarth/FeatureModelLayer>
 #include <osgEarth/GDAL>
+#include <osgEarth/ImageLayer>
+
+// 特效
+#include <osgParticle/ExplosionEffect>
+#include <osgParticle/ExplosionDebrisEffect>
+#include <osgParticle/SmokeEffect>
+#include <osgParticle/SmokeTrailEffect>
+#include <osgParticle/FireEffect>
+
 #include <osgDB/ReadFile>
 
 #include "MapLayerManager.h"
 
 using namespace osgEarth;
 using namespace osg;
+using namespace osgParticle;
 using namespace osgDB;
 using namespace std;
 
@@ -43,29 +52,40 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::loadEarthFile(const string& filePath) {
-        rootNode = readNodeFile(filePath);
-        if (!rootNode.valid()) {
+    bool MapLayerManager::addEntity(osg::Node *entityNode) {
+        if (entityNode == nullptr) {
+            return false;
+        }
+        if (!mapNode.valid()) {
+            return false;
+        }
+        mapNode->addChild(entityNode);
+        return true;
+    }
+
+    bool MapLayerManager::loadEarthFile(const string &filePath) {
+        earthNode = readNodeFile(filePath);
+        if (!earthNode.valid()) {
             // 读取文件失败
             return false;
         }
-        mapNode = MapNode::findMapNode(rootNode);
-        if (!rootNode.valid()) {
+        mapNode = MapNode::findMapNode(earthNode);
+        if (!earthNode.valid()) {
             // 加载的地球文件不包含 MapNode
             return false;
         }
         return true;
     }
 
-    bool MapLayerManager::showMapLayer(const string& layerName) {
+    bool MapLayerManager::showMapLayer(const string &layerName) {
         return setMapLayerVisibility(layerName, true);
     }
 
-    bool MapLayerManager::hideMapLayer(const string& layerName) {
+    bool MapLayerManager::hideMapLayer(const string &layerName) {
         return setMapLayerVisibility(layerName, false);
     }
 
-    bool MapLayerManager::setMapLayerVisibility(const string& layerName, bool visibility) {
+    bool MapLayerManager::setMapLayerVisibility(const string &layerName, bool visibility) {
         Layer *layer = findLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
@@ -75,8 +95,8 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::addImageLayer(const string& fileUrl,
-                                        const string& layerName) {
+    bool MapLayerManager::addImageLayer(const string &fileUrl,
+                                        const string &layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
             return false;
@@ -99,8 +119,8 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::addElevationLayer(const string& fileUrl,
-                                            const string& layerName) {
+    bool MapLayerManager::addElevationLayer(const string &fileUrl,
+                                            const string &layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
             return false;
@@ -119,7 +139,7 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    bool MapLayerManager::delLayerByName(const string& layerName) {
+    bool MapLayerManager::delLayerByName(const string &layerName) {
         Layer *layer = findLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
@@ -131,7 +151,7 @@ namespace MultiLayerTileMap {
         return true;
     }
 
-    Layer *MapLayerManager::findLayerByName(const string& layerName) {
+    Layer *MapLayerManager::findLayerByName(const string &layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
             return nullptr;
@@ -141,4 +161,136 @@ namespace MultiLayerTileMap {
         Layer *layer = map->getLayerByName(layerName);
         return layer;
     }
+
+    bool MapLayerManager::addShapefileLayer(const string &fileUrl, const string &layerName) {
+        auto *data = new OGRFeatureSource;
+        data->setURL(fileUrl);
+        if (data->open().isError()) {
+            return false;
+        }
+        Style style;
+        auto *alt = style.getOrCreate<AltitudeSymbol>();
+        alt->clamping() = alt->CLAMP_TO_TERRAIN; // 矢量贴地
+        alt->binding() = alt->BINDING_VERTEX; // 矢量文件的每个顶点独立贴合
+        // 可以修改 style 的其他属性
+
+        auto *layer = new FeatureModelLayer();
+        layer->setName(layerName);
+        layer->setFeatureSource(data);
+        // 矢量图层的瓦片加载配置
+        // 设置一个分页布局，用于增量加载。瓦片大小系数和能见度范围共同决定了瓦片的大小
+        // tile radius = max range / tile size factor
+        FeatureDisplayLayout layout;
+        layout.tileSize() = 500;
+        layer->setLayout(layout);
+        layer->setMaxVisibleRange(20000.0);
+
+        Map *map = mapNode->getMap();
+        map->addLayer(layer);
+        return true;
+    }
+
+    bool MapLayerManager::writeShapefile(const osgEarth::Util::OGRFeatureSource *srcFeatureSource,
+                                         const string &filePath) {
+        // create output shapefile
+        FeatureSchema outSchema;
+        outSchema = srcFeatureSource->getSchema();
+        osg::ref_ptr<OGRFeatureSource> output = new OGRFeatureSource();
+        output->setOGRDriver("ESRI Shapefile");
+        output->setURL(filePath);
+        if (output->create(srcFeatureSource->getFeatureProfile(), outSchema, srcFeatureSource->getGeometryType(),
+                           nullptr).isError()) {
+            return false;
+        }
+        return false;
+    }
+
+    bool MapLayerManager::addExplosion(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
+        auto *explosion = new ExplosionEffect(position, scale, intensity);
+        explosion->setWind(wind);
+        return addEntity(explosion);
+    }
+
+    bool MapLayerManager::addExplosionDebris(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
+        auto *explosionDebris = new ExplosionDebrisEffect(position, scale, intensity);
+        explosionDebris->setWind(wind);
+        explosionDebris->getEmitter()->setEndless(true);
+        explosionDebris->getEmitter()->setLifeTime(1);
+        return addEntity(explosionDebris);
+    }
+
+    bool MapLayerManager::addSmoke(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
+        auto *smoke = new SmokeEffect(position, scale, intensity);
+        smoke->setWind(wind);
+        return addEntity(smoke);
+    }
+
+    bool MapLayerManager::addFire(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
+        auto *fire = new FireEffect(position, scale, intensity);
+        fire->setWind(wind);
+        return addEntity(fire);
+    }
+
+    osg::AnimationPath *MapLayerManager::createAnimationPath(const Vec3 &center, float radius, double loopTime) {
+        auto *animationPath = new osg::AnimationPath;
+        animationPath->setLoopMode(osg::AnimationPath::LOOP); // 顺方向循环模式
+
+        int numSamples = 40; // 路径上共 40 个节点
+        float yaw = 0.0;
+        float yaw_delta = 2.0f * osg::PIf / ((float) numSamples - 1.0f); // 偏航差分
+        float roll = osg::inDegrees(30.0f); // 翻滚角
+
+        double time = 0.0;
+        double time_delta = loopTime / (double) numSamples; // 每一段的时间差
+        for (int i = 0; i < numSamples; ++i) {
+            osg::Vec3 position(center + osg::Vec3(sinf(yaw) * radius, cosf(yaw) * radius, 0));
+            osg::Quat rotation(osg::Quat(roll, osg::Vec3(0.0, 1.0, 0.0)) *
+                               osg::Quat(-(yaw + osg::inDegrees(90.0f)), osg::Vec3(0.0, 0.0, 1.0)));
+
+            animationPath->insert(time, osg::AnimationPath::ControlPoint(position, rotation));
+
+            yaw += yaw_delta;
+            time += time_delta;
+
+        }
+        return animationPath;
+    }
+
+    osg::Node *MapLayerManager::createMovingModel(const string &filename,
+                                                  const osg::Vec3 &center,
+                                                  float radius,
+                                                  double loopTime) {
+        osg::AnimationPath *animationPath = createAnimationPath(center, radius, loopTime);
+        osg::Group* group = new osg::Group;
+        osg::Node* model = osgDB::readNodeFile(filename);
+
+        if (model == nullptr) {
+            // 模型加载失败
+            return nullptr;
+        }
+
+        const osg::BoundingSphere &bs = model->getBound(); // 模型包围球
+//        float size = radius / bs.radius() * 0.15f;
+        float size = 1e4;
+
+        auto *positioned = new osg::MatrixTransform;
+        positioned->setDataVariance(osg::Object::STATIC); // 该值生命周期内静态不可变
+        positioned->setMatrix(osg::Matrix::translate(-bs.center()) * // 平移到圆形路径中心
+                              osg::Matrix::scale(size, size, size)); // 缩放
+
+        positioned->addChild(model);
+
+        auto *xform = new osg::PositionAttitudeTransform;
+        xform->setDataVariance(osg::Object::DYNAMIC);
+        xform->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
+        // 设置动画回调函数
+        xform->setUpdateCallback(new osg::AnimationPathCallback(animationPath, 0.0, 1.0f));
+        xform->addChild(positioned);
+        group->addChild(xform);
+
+        mapNode->addChild(group);
+
+        return group;
+    }
+
 } // MultiLayerTileMap

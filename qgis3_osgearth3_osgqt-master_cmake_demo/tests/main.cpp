@@ -9,12 +9,16 @@
 #include <QAction>
 #include <QApplication>
 #include <QMessageBox>
+#include <osg/CoordinateSystemNode>
 
 #include "osgQOpenGL/osgQOpenGLWidget.h"
 #include "MultiLayerTileMap/MapLayerManager.h"
 
 #define CATCH_CONFIG_RUNNER
 #define PAUSE ;;; // std::getchar()
+#define SHOW_MESSAGE true
+#define MESSAGE_TITLE "TileMapManagerDemo catch2 测试"
+#define MESSAGE(MESSAGE_STR) if(SHOW_MESSAGE) { QMessageBox::information(widget, MESSAGE_TITLE, MESSAGE_STR); }
 
 #include "catch.hpp"
 
@@ -24,7 +28,11 @@ using namespace MultiLayerTileMap;
 
 const double lon = 107.5999770;
 const double lat = 33.9887540;
+const float lonF = 107.5999770f;
+const float latF = 33.9887540f;
 const double eps = 0.001;
+double x, y, z;
+double earthR;
 osg::Group *root;
 MapLayerManager *mapLayerManager;
 osgQOpenGLWidget *widget;
@@ -43,9 +51,13 @@ TEST_CASE("MapLayerManager::MapLayerManager()") {
 TEST_CASE("MapLayerManager(std::string file)") {
     PAUSE
     const std::string filename = "./data/simple.earth";
-    mapLayerManager = new MapLayerManager(filename);
+    mapLayerManager = new MapLayerManager(filename, root);
     REQUIRE(mapLayerManager != nullptr);
-    root->addChild(mapLayerManager->getRootNode());
+    earthR = mapLayerManager->getMapNode()->getMapSRS()->getEllipsoid().getRadiusEquator();
+    printf("earthR: %f\n", earthR);
+    osg::Vec3d world;
+    auto* oem = new osg::EllipsoidModel();
+    oem->convertLatLongHeightToXYZ(lat, lon, 70, x, y, z);
 }
 
 TEST_CASE("loadEarthFile(std::string file)") {
@@ -69,7 +81,7 @@ TEST_CASE("addEntity for osg::Node") {
     auto *trans = new osg::MatrixTransform();
 //    trans->setMatrix(osg::Matrix::scale(1e-5, 1e-5, 1e-5));
     trans->addChild(cessna);
-    REQUIRE(mapLayerManager->addEntity(trans, {lon, lat, 50}, {0, 0, 0}));
+    REQUIRE(mapLayerManager->addEntity(trans, {lon-eps, lat, 50}, {0, 0, 0}));
     REQUIRE(mapLayerManager->addEntity(trans, {lon+eps, lat, 50}, {0, 90, 0}));
 //    mapLayerManager->getMapNode()->addChild(trans);
 }
@@ -91,8 +103,8 @@ TEST_CASE("addEntity for osg::Group") {
 TEST_CASE("addImageLayer") {
     PAUSE
     em->setViewpoint(Viewpoint("12m-center",
-                                          lon, lat-eps*5, 100,
-                                          0, -75, 3450.0));
+                                          lonF, latF, 10,
+                                          0, -75, 1000.0));
     const std::string filename = "./data/image/12m-image_Level_12.tif";
     const std::string layerName = "12m-image";
     REQUIRE(mapLayerManager->addImageLayer(filename, layerName));
@@ -109,7 +121,7 @@ TEST_CASE("addElevationLayer") {
 
 TEST_CASE("hideMapLayer") {
     PAUSE
-    const std::string layerName = "12m-image";
+    const std::string layerName = "12m-elevation";
     REQUIRE(mapLayerManager->hideMapLayer(layerName));
     Layer* layer = mapLayerManager->findLayerByName(layerName);
     REQUIRE_FALSE(layer->getEnabled());
@@ -117,7 +129,7 @@ TEST_CASE("hideMapLayer") {
 
 TEST_CASE("showMapLayer") {
     PAUSE
-    const std::string layerName = "12m-image";
+    const std::string layerName = "12m-elevation";
     REQUIRE(mapLayerManager->showMapLayer(layerName));
     Layer* layer = mapLayerManager->findLayerByName(layerName);
     REQUIRE(layer->getEnabled());
@@ -125,14 +137,50 @@ TEST_CASE("showMapLayer") {
 
 TEST_CASE("delLayerByName") {
     PAUSE
+//    MESSAGE("删除 World GeoTIFF");
     const std::string layerName = "12m-elevation";
     REQUIRE(mapLayerManager->delLayerByName(layerName));
     REQUIRE(mapLayerManager->findLayerByName(layerName) == nullptr);
 }
 
+//TEST_CASE("addShapefileLayer") {
+//    PAUSE
+//    MESSAGE("测试 addShapefileLayer");
+//    const std::string filename = "./data/world.shp";
+//    const std::string layerName = "shp-layer";
+//    REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
+//    REQUIRE(mapLayerManager->findLayerByName(layerName));
+//}
+
+osg::Vec3 effectXYZ(x, y, z);
+
+TEST_CASE("addExplosion") {
+//    MESSAGE("测试 addExplosion");
+    REQUIRE(mapLayerManager->addExplosion(effectXYZ, {0, 1, 0}, 100, 10));
+}
+
+TEST_CASE("addExplosionDebris") {
+//    MESSAGE("测试 addExplosionDebris");
+    REQUIRE(mapLayerManager->addExplosionDebris(effectXYZ, {0, 1, 0}, 100, 10));
+}
+
+TEST_CASE("addSmoke") {
+//    MESSAGE("测试 addSmoke");
+    REQUIRE(mapLayerManager->addSmoke(effectXYZ, {0, 1, 0}, 100, 10));
+}
+
+TEST_CASE("addFire") {
+//    MESSAGE("测试 addSmoke");
+    REQUIRE(mapLayerManager->addFire(effectXYZ, {0, 1, 0}, 100, 10));
+}
+
+TEST_CASE("createMovingModel") {
+    const std::string filename = "./data/cessna.osg";
+    REQUIRE(mapLayerManager->createMovingModel(filename, {0, 0, 0}, earthR+10000, 10));
+}
+
 int main(int argc, char *argv[]) {
 //    osg::setNotifyLevel(osg::NotifySeverity::INFO);
-
 
     QApplication app(argc, argv);
 

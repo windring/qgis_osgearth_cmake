@@ -311,3 +311,6 @@ add_executable(TileMapTests
         tests/main.cpp)
 target_link_libraries(TileMapTests ${LINK_LIBS})
 add_test(NAME TileMapTests COMMAND TileMapTests "-v normal")
+
+add_executable(LiTest tests/litest.cpp)
+target_link_libraries(LiTest ${LINK_LIBS})
