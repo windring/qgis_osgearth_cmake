@@ -4,7 +4,7 @@
 
 #include <osgEarth/Style>
 #include <osgEarth/ModelNode>
-#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/FeatureImageLayer>
 #include <osgEarth/GDAL>
 #include <osgEarth/ImageLayer>
 
@@ -165,28 +165,52 @@ namespace MultiLayerTileMap {
     bool MapLayerManager::addShapefileLayer(const string &fileUrl, const string &layerName) {
         auto *data = new OGRFeatureSource;
         data->setURL(fileUrl);
+        data->options().buildSpatialIndex() = true;
         if (data->open().isError()) {
             return false;
         }
+
         Style style;
+
         auto *alt = style.getOrCreate<AltitudeSymbol>();
         alt->clamping() = alt->CLAMP_TO_TERRAIN; // 矢量贴地
         alt->binding() = alt->BINDING_VERTEX; // 矢量文件的每个顶点独立贴合
-        // 可以修改 style 的其他属性
 
-        auto *layer = new FeatureModelLayer();
-        layer->setName(layerName);
-        layer->setFeatureSource(data);
+        auto* render = style.getOrCreate<RenderSymbol>();
+
+        auto* line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color(Color::Yellow, 0.5f);
+        line->stroke()->width() = 7.5f;
+        line->stroke()->widthUnits() = Units::METERS;
+
+        auto * polygon = style.getOrCreate<PolygonSymbol>();
+        polygon->fill()->color() = Color(Color::Cyan, 0.4f);
+        polygon->outline() = true;
+
+        auto* point = style.getOrCreateSymbol<PointSymbol>();
+        point->fill()->color() = Color::Blue;
+        point->size() = 8;
+
+        auto* extrusion =style.getOrCreate<ExtrusionSymbol>();
+        extrusion->height() = 250000.0;
+
         // 矢量图层的瓦片加载配置
         // 设置一个分页布局，用于增量加载。瓦片大小系数和能见度范围共同决定了瓦片的大小
         // tile radius = max range / tile size factor
-        FeatureDisplayLayout layout;
-        layout.tileSize() = 500;
-        layer->setLayout(layout);
-        layer->setMaxVisibleRange(20000.0);
+        // 适用于 FeatureModelLayer
+        // FeatureDisplayLayout layout;
+        // layout.tileSize() = 500;
 
+        auto *layer = new FeatureImageLayer();
+        layer->setName(layerName);
+        layer->setFeatureSource(data);
+        layer->setStyleSheet(new StyleSheet());
+        layer->getStyleSheet()->addStyle(style);
+
+        mapNode->open(); // TODO: 这行是否必要？
         Map *map = mapNode->getMap();
         map->addLayer(layer);
+        map->addLayer(data);
         return true;
     }
 

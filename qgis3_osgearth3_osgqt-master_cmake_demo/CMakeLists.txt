@@ -19,9 +19,9 @@ message(STATUS "Find libraries suffixes: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 list(APPEND CMAKE_MODULE_PATH "${${PROJECT_NAME}_SOURCE_DIR}/CMakeModules")
 
 set(OUR_DEV_PACKAGE "C:/dev/vcpkg/installed/x64-windows")
-set(ENV{OSGEO4W_ROOT} "D:/program/osgeo4w/")
-set(OSGEO4W_QGIS_SUBDIR "qgis-ltr-dev")
-set(Qt5_DIR "D:/program/osgeo4w/apps/Qt5/lib/cmake/Qt5")
+set(ENV{OSGEO4W_ROOT} "C:/Program Files/QGIS 3.22.7/")
+set(OSGEO4W_QGIS_SUBDIR "qgis-ltr")
+set(Qt5_DIR "C:/Program Files/QGIS 3.22.7/apps/Qt5/lib/cmake/Qt5")
 set(OSG_DIR "${OUR_DEV_PACKAGE}")
 set(OSGEARTH_DIR "${OUR_DEV_PACKAGE}")
 set(GDAL_DIR "${OUR_DEV_PACKAGE}")
@@ -150,6 +150,7 @@ include_directories(
 )
 
 aux_source_directory(osgQOpenGL OSGQOPENGL_SRC)
+aux_source_directory(MultiLayerTileMap MULTILAYERTILEMAP_SRC)
 
 link_directories("${OUR_DEV_PACKAGE}/lib/"
     "${OUR_DEV_PACKAGE}/lib64/"
@@ -301,16 +302,19 @@ if(WIN32)
     add_dependencies(${PROJECT_NAME} copy_platforms)
 endif(WIN32)
 
+add_executable(demo06 tests/demo06.cpp  ${OSGQOPENGL_SRC} ${MULTILAYERTILEMAP_SRC})
+target_link_libraries(demo06 ${LINK_LIBS})
+add_dependencies(demo06 copy_assets)
+
+add_executable(litest tests/litest.cpp)
+target_link_libraries(litest ${LINK_LIBS})
+
 enable_testing()
 add_subdirectory(tests)
 message(STATUS "tests: ${TILEMAP_TESTS_SRC}")
 add_executable(TileMapTests
         ${OSGQOPENGL_SRC}
-        MultiLayerTileMap/MapLayerManager.cpp
-        MultiLayerTileMap/MapLayerManager.h
+        ${MULTILAYERTILEMAP_SRC}
         tests/main.cpp)
 target_link_libraries(TileMapTests ${LINK_LIBS})
 add_test(NAME TileMapTests COMMAND TileMapTests "-v normal")
-
-add_executable(LiTest tests/litest.cpp)
-target_link_libraries(LiTest ${LINK_LIBS})

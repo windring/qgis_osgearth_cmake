@@ -12,6 +12,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Layer>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/Ellipsoid>
 #include <string>
 
 namespace MultiLayerTileMap {
@@ -40,6 +41,18 @@ namespace MultiLayerTileMap {
         /// \return 地图节点的智能指针
         osg::ref_ptr<osgEarth::MapNode> getMapNode() {
             return mapNode;
+        }
+
+        /// 返回地球的 Ellipsoid
+        /// \return 地球 Ellipsoid 的常量引用
+        const osgEarth::Ellipsoid& getEarthEllipsoid() {
+            return mapNode->getMapSRS()->getGeocentricSRS()->getEllipsoid();
+        }
+
+        /// 返回地球的 SRS（空间参考）
+        /// \return
+        const osgEarth::SpatialReference* getEarthSRS() {
+            return mapNode->getMapSRS();
         }
 
         /// 加载指定的 .earth 文件
@@ -198,6 +211,12 @@ namespace MultiLayerTileMap {
         /// \param loopTime 循环时间
         /// \return
         osg::Node* createMovingModel(const std::string& filename, const osg::Vec3& center, float radius, double loopTime);
+
+        /// 返回最后一次向地图节点添加的子节点
+        /// \return 最后一个子节点
+        osg::Node* getLastChild() {
+            return mapNode->getChild(mapNode->getNumChildren()-1);
+        }
     };
 } // MultiLayerTileMap
 

@@ -6,4 +6,19 @@ Demonstrates the simplest possible use of the GDAL layer to load a GeoTIFF image
     <GDALImage name="World GeoTIFF">
         <url>./world.tif</url>
     </GDALImage>
+    <!--<OGRFeatures name="world-data">
+        <url>./world.shp</url>
+    </OGRFeatures>
+    <FeatureImage name="World Boundaries">
+        <features>world-data</features>
+        <styles>
+            <style type="text/css">
+                default {
+                    fill:          #ff7700;
+                    stroke:        #ffff00;
+                    stroke-width:  5km;
+                }
+            </style>
+        </styles>
+    </FeatureImage>-->
 </map>
