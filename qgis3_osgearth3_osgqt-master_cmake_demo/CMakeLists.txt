@@ -165,7 +165,6 @@ add_executable(${PROJECT_NAME}
 if(UNIX AND NOT APPLE)
     # linux
     set(LINUX_ADDITION_LINK
-        ${GDAL_LIBRARY}
         ${CURL_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
@@ -263,6 +262,7 @@ set(LINK_LIBS
         ${OPENTHREADS_LIBRARY}
         ${QGIS_CORE_LIBRARY}
         ${QGIS_GUI_LIBRARY}
+        ${GDAL_LIBRARY}
         Qt5::Core
         Qt5::Widgets
         Qt5::Xml
