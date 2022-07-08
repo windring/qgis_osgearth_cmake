@@ -302,19 +302,22 @@ if(WIN32)
     add_dependencies(${PROJECT_NAME} copy_platforms)
 endif(WIN32)
 
-add_executable(demo06 tests/demo06.cpp  ${OSGQOPENGL_SRC} ${MULTILAYERTILEMAP_SRC})
-target_link_libraries(demo06 ${LINK_LIBS})
-add_dependencies(demo06 copy_assets)
-
-add_executable(litest tests/litest.cpp)
-target_link_libraries(litest ${LINK_LIBS})
-
 enable_testing()
 add_subdirectory(tests)
 message(STATUS "tests: ${TILEMAP_TESTS_SRC}")
-add_executable(TileMapTests
+
+add_executable(TestMapLayerManager
         ${OSGQOPENGL_SRC}
         ${MULTILAYERTILEMAP_SRC}
-        tests/main.cpp)
-target_link_libraries(TileMapTests ${LINK_LIBS})
-add_test(NAME TileMapTests COMMAND TileMapTests "-v normal")
+        tests/TestMapLayerManager.cpp)
+target_link_libraries(TestMapLayerManager ${LINK_LIBS})
+add_test(NAME TestMapLayerManager COMMAND TestMapLayerManager)
+
+add_executable(TestGroundVehicle tests/TestGroundVehicle.cpp ${OSGQOPENGL_SRC} ${MULTILAYERTILEMAP_SRC})
+target_link_libraries(TestGroundVehicle ${LINK_LIBS})
+add_dependencies(TestGroundVehicle copy_assets)
+add_test(NAME TestGroundVehicle COMMAND TestGroundVehicle)
+
+add_executable(TestPrecipitationEffect tests/TestPrecipitationEffect.cpp)
+target_link_libraries(TestPrecipitationEffect ${LINK_LIBS})
+add_test(NAME TestPrecipitationEffect COMMAND TestPrecipitationEffect)

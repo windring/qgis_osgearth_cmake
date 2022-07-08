@@ -169,8 +169,8 @@ namespace MultiLayerTileMap {
 
 
         /// 添加特效-爆炸
-        /// \param position 爆炸位置
-        /// \param wind 风向
+        /// \param position 经纬度位置
+        /// \param wind 风向，采用 osg 世界坐标系
         /// \param scale 缩放
         /// \param intensity 密度
         /// \return
@@ -179,8 +179,8 @@ namespace MultiLayerTileMap {
         bool addExplosion(const osg::Vec3 &position, const osg::Vec3 &wind, float scale, float intensity);
 
         /// 添加特效-爆炸碎片
-        /// \param position 爆炸位置
-        /// \param wind 风向
+        /// \param position 经纬度位置
+        /// \param wind 风向，采用 osg 世界坐标系
         /// \param scale 缩放
         /// \param intensity 密度
         /// \return
@@ -189,8 +189,8 @@ namespace MultiLayerTileMap {
         bool addExplosionDebris(const osg::Vec3 &position, const osg::Vec3 &wind, float scale, float intensity);
 
         /// 添加特效-烟雾
-        /// \param position 爆炸位置
-        /// \param wind 风向
+        /// \param position 经纬度位置
+        /// \param wind 风向，采用 osg 世界坐标系
         /// \param scale 缩放
         /// \param intensity 密度
         /// \return
@@ -198,15 +198,26 @@ namespace MultiLayerTileMap {
         ///     \retval false 失败
         bool addSmoke(const osg::Vec3 &position, const osg::Vec3 &wind, float scale, float intensity);
 
+        /// 添加特效-烟雾尾迹
+        /// \param position 经纬度位置
+        /// \param wind 风向，采用 osg 世界坐标系
+        /// \param scale 缩放
+        /// \param intensity 密度
+        /// \return
+        ///     \retval true 成功
+        ///     \retval false 失败
+        bool addSmokeTrailEffect(const osg::Vec3 &position, const osg::Vec3 &wind, float scale, float intensity);
+
         /// 添加特效-火
-        /// \param position 爆炸位置
-        /// \param wind 风向
+        /// \param position 经纬度位置
+        /// \param wind 风向，采用 osg 世界坐标系
         /// \param scale 缩放
         /// \param intensity 密度
         /// \return
         ///     \retval true 成功
         ///     \retval false 失败
         bool addFire(const osg::Vec3 &position, const osg::Vec3 &wind, float scale, float intensity);
+
 
         /// 创建圆形动画轨迹
         /// \param center 圆形轨迹中心点

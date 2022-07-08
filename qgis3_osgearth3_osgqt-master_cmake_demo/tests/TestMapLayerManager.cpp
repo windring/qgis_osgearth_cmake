@@ -31,8 +31,10 @@ const double lat = 33.9887540;
 const float lonF = 107.5999770f;
 const float latF = 33.9887540f;
 const double eps = 0.001;
+const float epsF = 0.001f;
 double x, y, z;
 double earthR;
+osg::Vec3d effectXYZ;
 osg::Group *root;
 MapLayerManager *mapLayerManager;
 osgQOpenGLWidget *widget;
@@ -79,11 +81,9 @@ TEST_CASE("addEntity for osg::Node") {
     const std::string filename = "./data/cessna.osg";
     osg::Node *cessna = readNodeFile(filename);
     auto *trans = new osg::MatrixTransform();
-//    trans->setMatrix(osg::Matrix::scale(1e-5, 1e-5, 1e-5));
     trans->addChild(cessna);
     REQUIRE(mapLayerManager->addEntity(trans, {lon-eps, lat, 50}, {0, 0, 0}));
     REQUIRE(mapLayerManager->addEntity(trans, {lon+eps, lat, 50}, {0, 90, 0}));
-//    mapLayerManager->getMapNode()->addChild(trans);
 }
 
 TEST_CASE("addEntity for osg::Group") {
@@ -97,7 +97,6 @@ TEST_CASE("addEntity for osg::Group") {
     group->addChild(trans);
     REQUIRE(mapLayerManager->addEntity(group, {lon+eps*2, lat, 50}, {0, 0, 0}));
     REQUIRE(mapLayerManager->addEntity(group, {lon+eps*3, lat, 50}, {0, 90, 0}));
-//    mapLayerManager->getMapNode()->addChild(trans);
 }
 
 TEST_CASE("addImageLayer") {
@@ -121,63 +120,114 @@ TEST_CASE("addElevationLayer") {
 
 TEST_CASE("hideMapLayer") {
     PAUSE
-    const std::string layerName = "12m-elevation";
+    const std::string layerName = "12m-image";
     REQUIRE(mapLayerManager->hideMapLayer(layerName));
-    Layer* layer = mapLayerManager->findLayerByName(layerName);
-    REQUIRE_FALSE(layer->getEnabled());
+    auto* layer = dynamic_cast<VisibleLayer*>(mapLayerManager->findLayerByName(layerName));
+    REQUIRE_FALSE(layer->getVisible());
 }
 
 TEST_CASE("showMapLayer") {
     PAUSE
-    const std::string layerName = "12m-elevation";
+    const std::string layerName = "12m-image";
     REQUIRE(mapLayerManager->showMapLayer(layerName));
-    Layer* layer = mapLayerManager->findLayerByName(layerName);
-    REQUIRE(layer->getEnabled());
+    auto* layer = dynamic_cast<VisibleLayer*>(mapLayerManager->findLayerByName(layerName));
+    REQUIRE(layer->getVisible());
 }
 
 TEST_CASE("delLayerByName") {
     PAUSE
-//    MESSAGE("删除 World GeoTIFF");
     const std::string layerName = "12m-elevation";
     REQUIRE(mapLayerManager->delLayerByName(layerName));
     REQUIRE(mapLayerManager->findLayerByName(layerName) == nullptr);
 }
 
-//TEST_CASE("addShapefileLayer") {
-//    PAUSE
-//    MESSAGE("测试 addShapefileLayer");
-//    const std::string filename = "./data/world.shp";
-//    const std::string layerName = "shp-layer";
-//    REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
-//    REQUIRE(mapLayerManager->findLayerByName(layerName));
-//}
+TEST_CASE("addShapefileLayer") {
+    PAUSE
+    const std::string filename = "./data/world.shp";
+    const std::string layerName = "shp-layer";
+    REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
+    REQUIRE(mapLayerManager->findLayerByName(layerName));
+}
 
-osg::Vec3 effectXYZ(x, y, z);
+TEST_CASE("WorldPos To GeoPos") {
+    PAUSE
+    GeoPoint geoPos(mapLayerManager->getEarthSRS(), lon, lat, 0);
+    geoPos.toWorld(effectXYZ);
+    printf("worldPos: %g %g %g\n", effectXYZ.x(), effectXYZ.y(), effectXYZ.z());
+}
 
 TEST_CASE("addExplosion") {
-//    MESSAGE("测试 addExplosion");
-    REQUIRE(mapLayerManager->addExplosion(effectXYZ, {0, 1, 0}, 100, 10));
+    PAUSE
+    osg::Vec3 position{lonF, latF-epsF, 0};
+    osg::Vec3 wind{0, 1, 0};
+    float scale = 10;
+    float intensity = 10;
+    REQUIRE(mapLayerManager->addExplosion(position, wind, scale, intensity));
 }
 
 TEST_CASE("addExplosionDebris") {
-//    MESSAGE("测试 addExplosionDebris");
-    REQUIRE(mapLayerManager->addExplosionDebris(effectXYZ, {0, 1, 0}, 100, 10));
+    PAUSE
+    osg::Vec3 position{lonF, latF, 0};
+    osg::Vec3 wind{0, 1, 0};
+    float scale = 10;
+    float intensity = 10;
+    REQUIRE(mapLayerManager->addExplosionDebris(position, wind, scale, intensity));
 }
 
 TEST_CASE("addSmoke") {
-//    MESSAGE("测试 addSmoke");
-    REQUIRE(mapLayerManager->addSmoke(effectXYZ, {0, 1, 0}, 100, 10));
+    PAUSE
+    osg::Vec3 position{lonF, latF+epsF, 0};
+    osg::Vec3 wind{0, 1, 0};
+    float scale = 10;
+    float intensity = 10;
+    REQUIRE(mapLayerManager->addSmoke(position, wind, scale, intensity));
+}
+
+TEST_CASE("addSmokeTrailEffect") {
+    PAUSE
+    osg::Vec3 position{lonF, latF+2*epsF, 0};
+    osg::Vec3 wind{0, 1, 0};
+    float scale = 10;
+    float intensity = 10;
+    REQUIRE(mapLayerManager->addSmokeTrailEffect(position, wind, scale, intensity));
 }
 
 TEST_CASE("addFire") {
-//    MESSAGE("测试 addSmoke");
-    REQUIRE(mapLayerManager->addFire(effectXYZ, {0, 1, 0}, 100, 10));
+    PAUSE
+    osg::Vec3 position{lonF, latF+3*epsF, 0};
+    osg::Vec3 wind{0, 1, 0};
+    float scale = 10;
+    float intensity = 10;
+    REQUIRE(mapLayerManager->addFire(position, wind, scale, intensity));
 }
 
 TEST_CASE("createMovingModel") {
+    PAUSE
     const std::string filename = "./data/cessna.osg";
     REQUIRE(mapLayerManager->createMovingModel(filename, {0, 0, 0}, earthR+10000, 10));
 }
+
+struct TestEventHandler : osgGA::GUIEventHandler {
+    bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) override {
+        switch (ea.getEventType()) {
+            case (osgGA::GUIEventAdapter::PUSH):
+                if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) {
+                    // 设定目的地
+                    osgUtil::LineSegmentIntersector::Intersections intersection;
+                    auto *pViewer = dynamic_cast<osgViewer::Viewer *>(&aa);
+                    pViewer->computeIntersections(ea.getX(), ea.getY(), intersection);
+                    auto iter = intersection.begin();
+                    if (iter != intersection.end()) {
+                        osg::Vec3d worldPos = iter->getWorldIntersectPoint(); // 世界坐标
+                        printf("worldPos: %g %g %g\n", worldPos.x(), worldPos.y(), worldPos.z());
+                    }
+                }
+                return false;
+            default:
+                return false;
+        }
+    }
+};
 
 int main(int argc, char *argv[]) {
 //    osg::setNotifyLevel(osg::NotifySeverity::INFO);
@@ -207,6 +257,8 @@ int main(int argc, char *argv[]) {
 //                         };
 //                         root->addChild(node);
                          viewer->setSceneData(root);
+                         auto eventHandler = new TestEventHandler;
+                         viewer->addEventHandler(eventHandler);
                          return Catch::Session().run(argc, argv);
                      });
 

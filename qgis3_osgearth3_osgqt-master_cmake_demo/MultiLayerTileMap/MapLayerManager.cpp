@@ -100,9 +100,14 @@ namespace MultiLayerTileMap {
         Layer *layer = findLayerByName(layerName);
         if (layer == nullptr) {
             // 不存在指定名字的图层
+            cerr << "layer not found: " << layerName << "\n";
             return false;
         }
-        layer->setEnabled(visibility);
+        auto* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+        if (visibleLayer == nullptr) {
+            return false;
+        }
+        visibleLayer->setVisible(visibility);
         return true;
     }
 
@@ -165,6 +170,7 @@ namespace MultiLayerTileMap {
     Layer *MapLayerManager::findLayerByName(const string &layerName) {
         if (!mapNode.valid()) {
             // 没有地图图层
+            cerr << "mapNode not valid\n";
             return nullptr;
         }
         mapNode->open(); // TODO: 这行是否必要？
@@ -241,27 +247,46 @@ namespace MultiLayerTileMap {
     }
 
     bool MapLayerManager::addExplosion(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
-        auto *explosion = new ExplosionEffect(position, scale, intensity);
+        GeoPoint geoPos(getEarthSRS(), position);
+        Vec3d worldPos;
+        geoPos.toWorld(worldPos);
+        auto *explosion = new ExplosionEffect(worldPos, scale, intensity);
         explosion->setWind(wind);
         return addEntity(explosion);
     }
 
     bool MapLayerManager::addExplosionDebris(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
-        auto *explosionDebris = new ExplosionDebrisEffect(position, scale, intensity);
+        GeoPoint geoPos(getEarthSRS(), position);
+        Vec3d worldPos;
+        geoPos.toWorld(worldPos);
+        auto *explosionDebris = new ExplosionDebrisEffect(worldPos, scale, intensity);
         explosionDebris->setWind(wind);
-        explosionDebris->getEmitter()->setEndless(true);
-        explosionDebris->getEmitter()->setLifeTime(1);
         return addEntity(explosionDebris);
     }
 
     bool MapLayerManager::addSmoke(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
-        auto *smoke = new SmokeEffect(position, scale, intensity);
+        GeoPoint geoPos(getEarthSRS(), position);
+        Vec3d worldPos;
+        geoPos.toWorld(worldPos);
+        auto *smoke = new SmokeEffect(worldPos, scale, intensity);
+        smoke->setWind(wind);
+        return addEntity(smoke);
+    }
+
+    bool MapLayerManager::addSmokeTrailEffect(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
+        GeoPoint geoPos(getEarthSRS(), position);
+        Vec3d worldPos;
+        geoPos.toWorld(worldPos);
+        auto *smoke = new SmokeTrailEffect(worldPos, scale, intensity);
         smoke->setWind(wind);
         return addEntity(smoke);
     }
 
     bool MapLayerManager::addFire(const Vec3 &position, const Vec3 &wind, float scale, float intensity) {
-        auto *fire = new FireEffect(position, scale, intensity);
+        GeoPoint geoPos(getEarthSRS(), position);
+        Vec3d worldPos;
+        geoPos.toWorld(worldPos);
+        auto *fire = new FireEffect(worldPos, scale, intensity);
         fire->setWind(wind);
         return addEntity(fire);
     }
@@ -296,7 +321,7 @@ namespace MultiLayerTileMap {
                                                   float radius,
                                                   double loopTime) {
         osg::AnimationPath *animationPath = createAnimationPath(center, radius, loopTime);
-        osg::Group *group = new osg::Group;
+        auto *group = new osg::Group;
         osg::Node *model = osgDB::readNodeFile(filename);
 
         if (model == nullptr) {
