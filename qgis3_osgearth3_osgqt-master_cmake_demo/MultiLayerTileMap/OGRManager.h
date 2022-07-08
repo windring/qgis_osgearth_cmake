@@ -6,6 +6,7 @@
 #define TILEMAPMANAGERDEMO_OGRMANAGER_H
 
 #include "ogrsf_frmts.h"
+
 namespace MultiLayerTileMap {
     class OGRManager {
     private:

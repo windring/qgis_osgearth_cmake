@@ -63,6 +63,17 @@ namespace MultiLayerTileMap {
         return true;
     }
 
+    bool MapLayerManager::addEntity(osgEarth::ModelNode *entityNode) {
+        if (entityNode == nullptr) {
+            return false;
+        }
+        if (!mapNode.valid()) {
+            return false;
+        }
+        mapNode->addChild(entityNode);
+        return true;
+    }
+
     bool MapLayerManager::loadEarthFile(const string &filePath) {
         earthNode = readNodeFile(filePath);
         if (!earthNode.valid()) {
@@ -176,22 +187,22 @@ namespace MultiLayerTileMap {
         alt->clamping() = alt->CLAMP_TO_TERRAIN; // 矢量贴地
         alt->binding() = alt->BINDING_VERTEX; // 矢量文件的每个顶点独立贴合
 
-        auto* render = style.getOrCreate<RenderSymbol>();
+        auto *render = style.getOrCreate<RenderSymbol>();
 
-        auto* line = style.getOrCreate<LineSymbol>();
+        auto *line = style.getOrCreate<LineSymbol>();
         line->stroke()->color() = Color(Color::Yellow, 0.5f);
         line->stroke()->width() = 7.5f;
         line->stroke()->widthUnits() = Units::METERS;
 
-        auto * polygon = style.getOrCreate<PolygonSymbol>();
+        auto *polygon = style.getOrCreate<PolygonSymbol>();
         polygon->fill()->color() = Color(Color::Cyan, 0.4f);
         polygon->outline() = true;
 
-        auto* point = style.getOrCreateSymbol<PointSymbol>();
+        auto *point = style.getOrCreateSymbol<PointSymbol>();
         point->fill()->color() = Color::Blue;
         point->size() = 8;
 
-        auto* extrusion =style.getOrCreate<ExtrusionSymbol>();
+        auto *extrusion = style.getOrCreate<ExtrusionSymbol>();
         extrusion->height() = 250000.0;
 
         // 矢量图层的瓦片加载配置
@@ -285,8 +296,8 @@ namespace MultiLayerTileMap {
                                                   float radius,
                                                   double loopTime) {
         osg::AnimationPath *animationPath = createAnimationPath(center, radius, loopTime);
-        osg::Group* group = new osg::Group;
-        osg::Node* model = osgDB::readNodeFile(filename);
+        osg::Group *group = new osg::Group;
+        osg::Node *model = osgDB::readNodeFile(filename);
 
         if (model == nullptr) {
             // 模型加载失败

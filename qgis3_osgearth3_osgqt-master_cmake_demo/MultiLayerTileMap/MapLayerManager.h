@@ -10,6 +10,7 @@
 #include <osg/Vec3d>
 #include <osg/AnimationPath>
 #include <osgEarth/MapNode>
+#include <osgEarth/ModelNode>
 #include <osgEarth/Layer>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Ellipsoid>
@@ -26,7 +27,10 @@ namespace MultiLayerTileMap {
     public:
         MapLayerManager() = default;
 
-        explicit MapLayerManager(const std::string &file, osg::Group* rootGroup) {
+        /// 初始化地图管理器，向根群组添加地球节点
+        /// \param file osgEarth 地球文件
+        /// \param rootGroup 根群组
+        explicit MapLayerManager(const std::string &file, osg::Group *rootGroup) {
             loadEarthFile(file);
             rootGroup->addChild(earthNode);
         }
@@ -45,13 +49,13 @@ namespace MultiLayerTileMap {
 
         /// 返回地球的 Ellipsoid
         /// \return 地球 Ellipsoid 的常量引用
-        const osgEarth::Ellipsoid& getEarthEllipsoid() {
+        const osgEarth::Ellipsoid &getEarthEllipsoid() {
             return mapNode->getMapSRS()->getGeocentricSRS()->getEllipsoid();
         }
 
         /// 返回地球的 SRS（空间参考）
         /// \return
-        const osgEarth::SpatialReference* getEarthSRS() {
+        const osgEarth::SpatialReference *getEarthSRS() {
             return mapNode->getMapSRS();
         }
 
@@ -86,6 +90,13 @@ namespace MultiLayerTileMap {
         ///     \retval true 成功
         ///     \retval false 失败
         bool addEntity(osg::Node *entityNode, osg::Vec3d lonLatAlt, osg::Vec3d picHeadingRoll);
+
+        /// 实体添加函数，传入类型为 osgEarth::ModelNode 节点
+        /// \param entityNode osgEarth::ModelNode 实体模型节点
+        /// \return 实体是否添加成功
+        ///     \retval true 成功
+        ///     \retval false 失败
+        bool addEntity(osgEarth::ModelNode *entityNode);
 
         /// 显示指定名字的地球地图图层
         /// \param layerName 图层的名字
@@ -200,9 +211,9 @@ namespace MultiLayerTileMap {
         /// 创建圆形动画轨迹
         /// \param center 圆形轨迹中心点
         /// \param radius 圆形轨迹半径
-        /// \param looptime 循环时间
+        /// \param loopTime 循环时间
         /// \return
-        static osg::AnimationPath* createAnimationPath(const osg::Vec3& center, float radius, double loopTime);
+        static osg::AnimationPath *createAnimationPath(const osg::Vec3 &center, float radius, double loopTime);
 
         /// 创建沿圆形路径移动的模型
         /// \param filename 模型文件路径
@@ -210,12 +221,13 @@ namespace MultiLayerTileMap {
         /// \param radius 圆形路径半径
         /// \param loopTime 循环时间
         /// \return
-        osg::Node* createMovingModel(const std::string& filename, const osg::Vec3& center, float radius, double loopTime);
+        osg::Node *
+        createMovingModel(const std::string &filename, const osg::Vec3 &center, float radius, double loopTime);
 
         /// 返回最后一次向地图节点添加的子节点
         /// \return 最后一个子节点
-        osg::Node* getLastChild() {
-            return mapNode->getChild(mapNode->getNumChildren()-1);
+        osg::Node *getLastChild() {
+            return mapNode->getChild(mapNode->getNumChildren() - 1);
         }
     };
 } // MultiLayerTileMap

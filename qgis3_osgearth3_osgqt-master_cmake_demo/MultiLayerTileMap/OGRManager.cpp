@@ -39,7 +39,7 @@ namespace MultiLayerTileMap {
         }
         auto point = new OGRPoint(lon, lat);
         auto srs = new OGRSpatialReference;
-        srs->SetWellKnownGeogCS( "WGS84" );
+        srs->SetWellKnownGeogCS("WGS84");
         point->assignSpatialReference(srs);
         point->transformTo(layer->GetSpatialRef());
         layer->SetSpatialFilter(point);

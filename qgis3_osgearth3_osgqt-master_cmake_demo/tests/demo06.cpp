@@ -10,23 +10,16 @@
 #include <osgEarth/EarthManipulator>
 #include <osgDB/ReadFile>
 #include <osg/CoordinateSystemNode>
-#include <osg/Timer>
 #include <osgGA/GUIEventHandler>
 #include <osgEarth/GLUtils>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ModelNode>
-#include <osgParticle/SmokeEffect>
-#include <osgParticle/SmokeTrailEffect>
-#include <osgParticle/FireEffect>
-#include <osg/ComputeBoundsVisitor>
 #include <osg/Quat>
 #include <osg/Vec2d>
-#include <utility>
 
 #include "osgQOpenGL/osgQOpenGLWidget.h"
 #include "MultiLayerTileMap/MapLayerManager.h"
 #include "MultiLayerTileMap/OGRManager.h"
+#include "MultiLayerTileMap/GroundVehicle.h"
 
 #define CATCH_CONFIG_RUNNER
 #define PAUSE ;;; // std::getchar()
@@ -41,15 +34,11 @@ using namespace MultiLayerTileMap;
 const float lonF = 92.9431f;
 const float latF = 34.9348f;
 const double eps = 0.001;
-double tankDeltaHeight;
-double earthR;
 osg::Group *root = nullptr;
 MapLayerManager *mapLayerManager = nullptr;
 osgQOpenGLWidget *widget = nullptr;
 EarthManipulator *em = nullptr;
-osgEarth::ModelNode *tankModelNode = nullptr;
 GroundVehicle *tank = nullptr;
-osgParticle::SmokeEffect *tankSmoke = nullptr;
 OGRManager *ogrManager = nullptr;
 
 TEST_CASE("MapLayerManager(std::string file)") {
@@ -57,8 +46,6 @@ TEST_CASE("MapLayerManager(std::string file)") {
     const std::string filename = "./data/demo06/simple.earth";
     mapLayerManager = new MapLayerManager(filename, root);
     REQUIRE(mapLayerManager != nullptr);
-    earthR = mapLayerManager->getMapNode()->getMapSRS()->getEllipsoid().getRadiusEquator();
-    printf("earthR: %f\n", earthR);
 }
 
 TEST_CASE("addImageLayer") {
@@ -88,44 +75,6 @@ TEST_CASE("addShapefileLayer") {
     REQUIRE(mapLayerManager->findLayerByName(layerName));
 }
 
-TEST_CASE("addEntity") {
-    PAUSE
-    // -268956 5.2314e+06 3.63454e+06
-    // 92.9431 34.9348 4551.91
-    const double lon = 92.9431;
-    const double lat = 34.9348;
-    const double alt = 4561.91;
-    const std::string filename = "./data/demo06/M60.obj";
-    osg::Node *cessna = readNodeFile(filename);
-    osgEarth::Registry::shaderGenerator().run(cessna);
-    cessna->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
-    cessna->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON);
-
-    auto *trans = new osg::MatrixTransform;
-    trans->setMatrix(osg::Matrix::scale(1e-2, 1e-2, 1e-2));
-    trans->addChild(cessna);
-
-    // 计算包围盒
-    osg::ComputeBoundsVisitor cbv;
-    trans->accept(cbv);
-    osg::BoundingBox modelBB = cbv.getBoundingBox();
-    printf("modelBB: %g %g %g\n", modelBB.zMin(), modelBB.zMax(), modelBB.center().z());
-    tankDeltaHeight = modelBB.center().z() - modelBB.zMin();
-
-    tankSmoke = new osgParticle::SmokeEffect({-268956, 5.2314e+06, 3.63454e+06}, 10, 10);
-    tankSmoke->setWind({0, 30, 10});
-    tankSmoke->setParticleDuration(2);
-    tankSmoke->getEmitter()->setEndless(true);
-    tankSmoke->getEmitter()->setLifeTime(100); // 一直冒灰
-
-    auto *group = new osg::Group;
-    group->addChild(trans);
-    group->addChild(tankSmoke);
-
-    REQUIRE(mapLayerManager->addEntity(group, {lon, lat, alt + tankDeltaHeight}, {0, 0, 0}));
-    tankModelNode = dynamic_cast<osgEarth::ModelNode *>(mapLayerManager->getLastChild());
-}
-
 //TEST_CASE("createMovingModel") {
 //    const std::string filename = "./data/demo06/cessna.osg";
 //    REQUIRE(mapLayerManager->createMovingModel(filename, {0, 0, 0}, earthR+10000, 10));
@@ -140,8 +89,20 @@ TEST_CASE("OGRManager") {
 }
 
 TEST_CASE("TankMove") {
-    const std::string datasetName = "tankShapefile";
-    tank = new GroundVehicle(tankModelNode, mapLayerManager, tankSmoke, tankDeltaHeight, ogrManager, datasetName);
+    // -268956 5.2314e+06 3.63454e+06
+    // 92.9431 34.9348 4551.91
+    const std::string filename = "./data/demo06/M60.obj";
+    const osg::Vec3d lonLatAlt{92.9431, 34.9348, 4551.91};
+    const osg::Vec3d picHeadingRoll{0, 0, 0};
+    const osg::Vec3d scaleFactor{1e-2, 1e-2, 1e-2};
+    const std::string shapefileDatasetName = "tankShapefile";
+    tank = new GroundVehicle(mapLayerManager,
+                             ogrManager,
+                             filename,
+                             lonLatAlt,
+                             picHeadingRoll,
+                             scaleFactor,
+                             shapefileDatasetName);
     widget->getOsgViewer()->addEventHandler(dynamic_cast<osgGA::EventHandler *>(tank->moveGUIEventHandler));
 }
 

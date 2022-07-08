@@ -14,14 +14,16 @@
 #include "OGRManager.h"
 
 namespace MultiLayerTileMap {
+
     class GroundVehicle {
     private:
+
         osgEarth::ModelNode *tankGroup = nullptr;
+        osgParticle::SmokeEffect *tankSmoke = nullptr;
+        MapLayerManager *mapLayerManager = nullptr;
         osg::Vec3d startWorldPos; // 当前位置
         osg::Vec3d endWorldPos; // 目标位置
         double deltaHeight;
-        MapLayerManager *mapLayerManager = nullptr;
-        osgParticle::SmokeEffect *tankSmoke = nullptr;
 
         // 这辆坦克的速度需要根据 Shapefile 进行改变
         class SpeedManager {
@@ -39,145 +41,93 @@ namespace MultiLayerTileMap {
                     {"Sand Regions",              200},
                     {"Seasonal Water",            50},
                     {"Lake",                      50},
-                    {"River",                     50}
-            };
+                    {"River",                     50}};
+
         public:
-            SpeedManager(OGRManager *_ogrManager, const osgEarth::SpatialReference *_srs, std::string _shapefileDatasetName) :
+            SpeedManager(OGRManager *_ogrManager, const osgEarth::SpatialReference *_srs,
+                         std::string _shapefileDatasetName) :
                     ogrManager(_ogrManager), srs(_srs), shapefileDatasetName(std::move(_shapefileDatasetName)) {
             }
 
-            double getSpeedByWorldXYZ(const osg::Vec3d xyz) {
-                osgEarth::GeoPoint point;
-                point.fromWorld(srs, xyz);
-                return getSpeedByLonLat(point.x(), point.y());
-            }
+            /// 获取当前世界坐标所对应的速度，该速度根据 Shapefile 的标注进行改变，例如草地会更慢，标注-速率关系参见 speedTable
+            /// \param xyz 世界坐标
+            /// \return 速率
+            double getSpeedByWorldXYZ(osg::Vec3d xyz);
 
-            double getSpeedByLonLat(double lon, double lat) {
-                std::vector<std::string> typeList = ogrManager->getFieldByLonLat(shapefileDatasetName,
-                                                                                 layerIndex, fieldIndex, lon, lat);
-                if (!typeList.empty()) {
-                    // 存在要素标记
-                    if (preType != typeList[0]) { // 更新标记类型
-                        std::cout << "new type: " << typeList[0] << std::endl;
-                        preType = typeList[0];
-                    }
-                    if (speedTable.find(typeList[0]) != speedTable.end()) {
-                        // 存在速度预设
-                        return speedTable[typeList[0]];
-                    } else {
-                        // 不存在速度预设
-                        return defaultSpeed;
-                    }
-                } else {
-                    // 没有找到要素标记
-                    std::cout << "no label" << std::endl;
-                    return defaultSpeed;
-                }
-            }
-        } *speedManager;
+            /// 获取当前 WSG84 经纬度坐标对应的速度，该速度根据 Shapefile 的标注进行改变，例如草地会更慢，标注-速率关系参见 speedTable
+            /// \param lon 经度
+            /// \param lat 纬度
+            /// \return 速率
+            double getSpeedByLonLat(double lon, double lat);
+        } *speedManager = nullptr;
 
     public:
-        GroundVehicle(osgEarth::ModelNode *_tankGroup, MapLayerManager *_manager, osgParticle::SmokeEffect *_smoke,
-                      double _deltaHeight, OGRManager *_ogrManager, const std::string &_shapefileDatasetName) :
-                tankGroup(_tankGroup), mapLayerManager(_manager), tankSmoke(_smoke), deltaHeight(_deltaHeight),
-                speedManager(new SpeedManager(_ogrManager, _manager->getEarthSRS(), _shapefileDatasetName)) {
-            startWorldPos = {-268956, 5.2314e+06, 3.63454e+06 + deltaHeight};
-            endWorldPos = {-268956, 5.2314e+06, 3.63454e+06 + deltaHeight};
-            moveGUIEventHandler = new MoveGUIEventHandler(this);
-        }
+        /// 载具构造函数，构造载具的同时加入到地图当中
+        /// \param _mapLayerManager 地图管理器
+        /// \param _ogrManager OGR 资源管理器
+        /// \param filename 载具模型文件
+        /// \param lonLatAlt 初始地理坐标
+        /// \param picHeadingRoll 姿势角度
+        /// \param scaleFactor 缩放因子
+        /// \param _shapefileDatasetName 速度管理所依赖的 Shapefile 数据集名字，该名字在 OGR 资源管理器中加载 Shapefile 时指定
+        GroundVehicle(MapLayerManager *_mapLayerManager,
+                      OGRManager *_ogrManager,
+                      const std::string &filename,
+                      const osg::Vec3d &lonLatAlt,
+                      const osg::Vec3d &picHeadingRoll,
+                      const osg::Vec3d &scaleFactor,
+                      const std::string &_shapefileDatasetName);
 
-        [[nodiscard]] double getDeltaHeight() const {
-            return deltaHeight;
-        }
+        /// 获取载具包络中心点到底部的距离
+        /// \return 载具包络中心点到底部的距离
+        [[nodiscard]] double getDeltaHeight() const;
 
-        [[nodiscard]] double getDeltaDistance(double deltaTime) {
-            return deltaTime * speedManager->getSpeedByWorldXYZ(startWorldPos);
-        }
+        /// 根据间隔时间获取移动的距离
+        /// \param deltaTime 间隔时间
+        /// \return 移动距离
+        [[nodiscard]] double getDeltaDistance(double deltaTime);
 
-        osgEarth::GeoPoint getNextGeoPos(double deltaDistance) {
-            double minDistance = (startWorldPos - endWorldPos).length();
-            if (minDistance < deltaDistance) {
-                startWorldPos = endWorldPos;
-            } else {
-                osg::Vec3d iVector3d = endWorldPos - startWorldPos;
-                iVector3d.normalize();
-                startWorldPos += iVector3d * deltaDistance;
+        /// 根据移动距离获取下一个移动位置
+        /// \param deltaDistance 移动距离
+        /// \return 下一个位置点
+        osgEarth::GeoPoint getNextGeoPos(double deltaDistance);
 
-                // 简化为二维问题
-                iVector3d.z() = 0;
-                osg::Vec3d i = {0, 1, 0};
-                double dot = i * iVector3d;
-                double bottom = i.length() * iVector3d.length();
-                double angle = acos(dot / bottom);
-                double cross = (i ^ iVector3d).z();
-                if (cross < 0) {
-                    angle *= -1;
-                }
-                tankGroup->setLocalRotation(osg::Quat(angle, osg::Vec3({0, 0, 1})));
-            }
-            osgEarth::GeoPoint ret;
-            ret.fromWorld(mapLayerManager->getEarthSRS(), startWorldPos);
-
-            return ret;
-        }
-
+        /// 设置目标位置
+        /// \param pos
         void setEndWorldPos(osg::Vec3d pos) {
             endWorldPos = pos;
         }
 
-        void updateWorldPos(double deltaTime) {
-            double deltaDistance = getDeltaDistance(deltaTime);
-            osgEarth::GeoPoint nextGeoPos = getNextGeoPos(deltaDistance);
-            tankGroup->setPosition(nextGeoPos);
-            tankSmoke->setPosition(startWorldPos - osg::Vec3d(0, 0, deltaHeight));
-        }
+        /// 根据间隔时间更新载具位置
+        /// 步骤：1. 根据间隔时间获取移动距离
+        ///      2. 根据移动距离获取下一位置点
+        ///      3. 更新载具和特效到下一位置点
+        /// TODO: 将载具和烟雾特效组合在一起
+        /// \param deltaTime 间隔时间
+        void updateWorldPos(double deltaTime);
 
+        /// 载具的事件处理对象
+        /// 用例：
+        /// widget->getOsgViewer()->addEventHandler(dynamic_cast<osgGA::EventHandler *>(moveGUIEventHandler));
         struct MoveGUIEventHandler : public osgGA::GUIEventHandler {
             osg::Timer_t timeTick = osg::Timer::instance()->tick();
-            GroundVehicle* tank = nullptr;
+            GroundVehicle *tank = nullptr;
 
-            explicit MoveGUIEventHandler (GroundVehicle* _tank): tank(_tank) {}
+            /// 构造载具事件处理对象
+            /// \param _tank 载具
+            explicit MoveGUIEventHandler(GroundVehicle *_tank) : tank(_tank) {}
 
-            bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) override {
-                osg::Timer_t curTimeTick = osg::Timer::instance()->tick();
-                double deltaS = osg::Timer::instance()->delta_s(timeTick, curTimeTick);
-                timeTick = curTimeTick;
-                if (tank) {
-                    tank->updateWorldPos(deltaS);
-                }
-                switch (ea.getEventType()) {
-                    case (osgGA::GUIEventAdapter::PUSH):
-                        printf("push\n");
-                        if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) {
-                            // 设定目的地
-                            moveWorldPos(ea, aa);
-                        }
-                        return false;
-                    default:
-                        return false;
-                }
-            }
+            /// 载具事件处理函数
+            /// \param ea osgGA::GUIEventAdapter
+            /// \param aa osgGA::GUIActionAdapter
+            /// \return
+            bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) override;
 
-            osg::Vec3d moveWorldPos(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) const {
-                osg::Vec3d pos(0, 0, 0);
-                auto *pViewer = dynamic_cast<osgViewer::Viewer *>(&aa);
-                if (pViewer == nullptr) {
-                    return pos;
-                }
-                // 获取当前点
-                osgUtil::LineSegmentIntersector::Intersections intersection;
-                pViewer->computeIntersections(ea.getX(), ea.getY(), intersection);
-                auto iter = intersection.begin();
-                if (iter != intersection.end()) {
-                    osg::Vec3d worldPos = iter->getWorldIntersectPoint(); // 世界坐标
-                    worldPos.z() += tank->getDeltaHeight();
-                    if (tank) {
-                        tank->setEndWorldPos(worldPos);
-                    }
-                    printf("worldPos: %g %g %g\n", worldPos.x(), worldPos.y(), worldPos.z());
-                }
-                return pos;
-            }
+            /// 根据鼠标中键选点，设定载具的目的位置
+            /// \param ea osgGA::GUIEventAdapter
+            /// \param aa osgGA::GUIActionAdapter
+            /// \return 目的位置的世界坐标，失败时返回 (0, 0, 0)
+            osg::Vec3d moveWorldPos(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) const;
         } *moveGUIEventHandler;
     };
 }
