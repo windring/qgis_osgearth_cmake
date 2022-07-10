@@ -35,10 +35,10 @@ namespace MultiLayerTileMap {
             const osgEarth::SpatialReference *srs = nullptr; // 坐标参考系
             double defaultSpeed = 200;
             std::map<std::string, double> speedTable = {
-                    {"Sparse Coverage Grassland", 150},
-                    {"Medium Coverage Grassland", 100},
-                    {"River Valley",              100},
-                    {"Sand Regions",              200},
+                    {"Sparse Coverage Grassland", 100},
+                    {"Medium Coverage Grassland", 200},
+                    {"River Valley",              200},
+                    {"Sand Regions",              300},
                     {"Seasonal Water",            50},
                     {"Lake",                      50},
                     {"River",                     50}};

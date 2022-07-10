@@ -321,3 +321,8 @@ add_test(NAME TestGroundVehicle COMMAND TestGroundVehicle)
 add_executable(TestPrecipitationEffect tests/TestPrecipitationEffect.cpp)
 target_link_libraries(TestPrecipitationEffect ${LINK_LIBS})
 add_test(NAME TestPrecipitationEffect COMMAND TestPrecipitationEffect)
+
+find_package(Bullet CONFIG REQUIRED)
+include_directories(${BULLET_INCLUDE_DIRS})
+add_executable(TestBullet tests/TestBullet.cpp)
+target_link_libraries(TestBullet BulletDynamics BulletCollision LinearMath) # LinearMath Bullet3Common BulletDynamics BulletSoftBody)
