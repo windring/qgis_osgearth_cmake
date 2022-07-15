@@ -21,6 +21,9 @@ namespace MultiLayerTileMap {
     }
 
     double GroundVehicle::SpeedManager::getSpeedByLonLat(double lon, double lat) {
+        if (ogrManager == nullptr) {
+            return defaultSpeed;
+        }
         std::vector<std::string> typeList = ogrManager->getFieldByLonLat(shapefileDatasetName,
                                                                          layerIndex, fieldIndex, lon, lat);
         if (!typeList.empty()) {

@@ -88,7 +88,7 @@ TEST_CASE("addEntity for osg::Node") {
 
 TEST_CASE("addEntity for osg::Group") {
     PAUSE
-    const std::string filename = "./data/3ds/3D-Models---Military-master/BRDM3/BRDM3/BRDM3_L.3DS";
+    const std::string filename = "./data/demo06/M60.obj";
     auto* group = new osg::Group;
     osg::Node* a3ds = readNodeFile(filename);
     auto *trans = new osg::MatrixTransform();

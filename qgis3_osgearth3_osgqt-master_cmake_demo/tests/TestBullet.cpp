@@ -1,178 +1,135 @@
-/*
-Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2007 Erwin Coumans  https://bulletphysics.org
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
-subject to the following restrictions:
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-*/
+#include <osg/ArgumentParser>
+#include <osgGA/GUIEventHandler>
+#include <osgGA/StateSetManipulator>
+#include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osg/ShapeDrawable>
+#include <osg/MatrixTransform>
+#include "MultiLayerTileMap/BulletManager.h"
 
-///-----includes_start-----
-#include "btBulletDynamicsCommon.h"
-#include <stdio.h>
+using namespace MultiLayerTileMap;
 
-/// This is a Hello World program for running a basic Bullet physics simulation
+BulletManager *bulletManager = nullptr;
 
-int main(int argc, char** argv)
-{
-    ///-----includes_end-----
+class SampleRigidUpdater : public osgGA::GUIEventHandler {
+    typedef std::map<int, osg::observer_ptr<osg::MatrixTransform>> MTNodeMap;
+    MTNodeMap _osgNodes;
+    osg::observer_ptr<osg::Group> _root;
+    BulletManager *_bulletManager;
+public:
+    SampleRigidUpdater(osg::Group *root, BulletManager *manager) : _root(root), _bulletManager(manager) {}
 
-    int i;
-    ///-----initialization_start-----
-
-    ///collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
-    btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
-
-    ///use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
-    btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
-
-    ///btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
-    btBroadphaseInterface* overlappingPairCache = new btDbvtBroadphase();
-
-    ///the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-    btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
-
-    btDiscreteDynamicsWorld* dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-
-    dynamicsWorld->setGravity(btVector3(0, -10, 0));
-
-    ///-----initialization_end-----
-
-    //keep track of the shapes, we release memory at exit.
-    //make sure to re-use collision shapes among rigid bodies whenever possible!
-    btAlignedObjectArray<btCollisionShape*> collisionShapes;
-
-    ///create a few basic rigid bodies
-
-    //the ground is a cube of side 100 at position y = -56.
-    //the sphere will hit it at y = -6, with center at -5
-    {
-        btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(50.), btScalar(50.), btScalar(50.)));
-
-        collisionShapes.push_back(groundShape);
-
-        btTransform groundTransform;
-        groundTransform.setIdentity();
-        groundTransform.setOrigin(btVector3(0, -56, 0));
-
-        btScalar mass(0.);
-
-        //rigidbody is dynamic if and only if mass is non zero, otherwise static
-        bool isDynamic = (mass != 0.f);
-
-        btVector3 localInertia(0, 0, 0);
-        if (isDynamic)
-            groundShape->calculateLocalInertia(mass, localInertia);
-
-        //using motionstate is optional, it provides interpolation capabilities, and only synchronizes 'active' objects
-        btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
-        btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, groundShape, localInertia);
-        btRigidBody* body = new btRigidBody(rbInfo);
-
-        //add the body to the dynamics world
-        dynamicsWorld->addRigidBody(body);
+    void addGround() {
+        osg::ref_ptr<osg::MatrixTransform> groundMT = new osg::MatrixTransform;
+        osg::ref_ptr<osg::Geode> groundGeode = new osg::Geode; // 地理 node
+        osg::ref_ptr<osg::Box> groundShape = new osg::Box(osg::Vec3(0.0f, 0.0f, -0.5f),
+                                                          100.0f,
+                                                          100.0f,
+                                                          1.0f);
+        osg::ref_ptr<osg::ShapeDrawable> groundDrawable = new osg::ShapeDrawable(groundShape);
+        groundGeode->addDrawable(groundDrawable);
+        groundMT->addChild(groundGeode.get());
+        _root->addChild(groundMT.get());
     }
 
-    {
-        //create a dynamic rigidbody
+    int addPhysicsBox(osg::Box *shape, const osg::Vec3 &pos, const osg::Vec3 &vel, float mass) {
+        const osg::Vec3 &dim = shape->getHalfLengths();
+        btCollisionShape *boxShape = new btBoxShape(btVector3(dim[0], dim[1], dim[2]));
+        btTransform boxTransform;
+        boxTransform.setIdentity();
 
-        //btCollisionShape* colShape = new btBoxShape(btVector3(1,1,1));
-        btCollisionShape* colShape = new btSphereShape(btScalar(1.));
-        collisionShapes.push_back(colShape);
+        btVector3 localInertia(0.0, 0.0, 0.0);
+        if (mass > 0.0) {
+            boxShape->calculateLocalInertia(mass, localInertia);
+        }
 
-        /// Create Dynamic Objects
-        btTransform startTransform;
-        startTransform.setIdentity();
+        auto *motionState = new btDefaultMotionState(boxTransform);
+        btRigidBody::btRigidBodyConstructionInfo rigidInfo(mass, motionState, boxShape, localInertia);
+        auto *pRigidBody = new btRigidBody(rigidInfo);
+        _bulletManager->getDynamicsWorld()->addRigidBody(pRigidBody);
 
-        btScalar mass(1.f);
+        // 物理位置
+        btTransform trans;
+        trans.setFromOpenGLMatrix(osg::Matrixf(osg::Matrix::translate(pos)).ptr());
+        pRigidBody->setWorldTransform(trans);
 
-        //rigidbody is dynamic if and only if mass is non zero, otherwise static
-        bool isDynamic = (mass != 0.f);
-
-        btVector3 localInertia(0, 0, 0);
-        if (isDynamic)
-            colShape->calculateLocalInertia(mass, localInertia);
-
-        startTransform.setOrigin(btVector3(2, 10, 0));
-
-        //using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
-        btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-        btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, colShape, localInertia);
-        btRigidBody* body = new btRigidBody(rbInfo);
-
-        dynamicsWorld->addRigidBody(body);
+        // 物理速度
+        pRigidBody->setLinearVelocity(btVector3(vel.x(), vel.y(), vel.z()));
+        int key = _bulletManager->registerRigidBodyAndGetKey(pRigidBody);
+        return key;
     }
 
-    /// Do some simulation
+    bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) override {
+        auto *view = dynamic_cast<osgViewer::View *>( &aa );
 
-    ///-----stepsimulation_start-----
-    for (i = 0; i < 150; i++)
-    {
-        dynamicsWorld->stepSimulation(1.f / 60.f, 10);
+        if (!view || !_root) return false;
 
-        //print positions of all objects
-        for (int j = dynamicsWorld->getNumCollisionObjects() - 1; j >= 0; j--)
-        {
-            btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[j];
-            btRigidBody* body = btRigidBody::upcast(obj);
-            btTransform trans;
-            if (body && body->getMotionState())
-            {
-                body->getMotionState()->getWorldTransform(trans);
-            }
-            else
-            {
-                trans = obj->getWorldTransform();
-            }
-            printf("world pos object %d = %f,%f,%f\n", j, float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
+        switch (ea.getEventType()) {
+            case osgGA::GUIEventAdapter::PUSH:
+                if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) {
+                    printf("fire\n");
+                    osg::Vec3 eye, center, up, dir;
+                    view->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+                    dir = center - eye;
+                    dir.normalize();
+                    auto *pShape = new osg::Box(osg::Vec3(), 0.5f);
+                    int key = addPhysicsBox(pShape, eye, dir * 60.0f, 2.0);
+                    addOSGShape(key, pShape);
+                }
+                break;
+            case osgGA::GUIEventAdapter::FRAME:
+                _bulletManager->getDynamicsWorld()->stepSimulation(1.f / 60.f, 10);
+                for (auto &itr: _osgNodes) {
+                    osg::Matrix matrix = bulletManager->getRigidBodyMatrixByKey(itr.first); // 获取在物理引擎中的矩阵
+                    itr.second->setMatrix(matrix); // 设置矩阵到 OSG 场景的对应 Node
+                }
+                break;
+            default:
+                break;
+        }
+        return false;
+    }
+
+    void addOSGShape(int key, osg::Shape *shape) {
+        osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform;
+        osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+        geode->addDrawable(new osg::ShapeDrawable(shape));
+        mt->addChild(geode.get());
+        _root->addChild(mt.get());
+        _osgNodes[key] = mt;
+    }
+};
+
+int main(int argc, char **argv) {
+    bulletManager = new BulletManager;
+    bulletManager->getDynamicsWorld()->setGravity(btVector3(0.0f, 0.0f, -9.8f)); // 设置重力
+    osg::Plane plane(0.0f, 0.0f, 1.0f, 0.0f);
+    bulletManager->createSimplePlaneFromOSG(plane); // 创建平面
+
+    osg::ArgumentParser arguments(&argc, argv);
+
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    osg::ref_ptr<osgGA::GUIEventHandler> updater;
+    auto *rigidUpdater = new SampleRigidUpdater(root.get(), bulletManager);
+    rigidUpdater->addGround();
+    for (unsigned int i = 0; i < 10; ++i) {
+        for (unsigned int j = 0; j < 10; ++j) {
+            auto *pShape = new osg::Box(osg::Vec3(), 0.99f);
+            int key = rigidUpdater->addPhysicsBox(pShape,
+                                                  osg::Vec3((float) i, 0.0f, (float) j + 0.5f), osg::Vec3(), 1.0f);
+            rigidUpdater->addOSGShape(key, pShape);
         }
     }
+    updater = rigidUpdater;
 
-    ///-----stepsimulation_end-----
-
-    //cleanup in the reverse order of creation/initialization
-
-    ///-----cleanup_start-----
-
-    //remove the rigidbodies from the dynamics world and delete them
-    for (i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
-    {
-        btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
-        btRigidBody* body = btRigidBody::upcast(obj);
-        if (body && body->getMotionState())
-        {
-            delete body->getMotionState();
-        }
-        dynamicsWorld->removeCollisionObject(obj);
-        delete obj;
-    }
-
-    //delete collision shapes
-    for (int j = 0; j < collisionShapes.size(); j++)
-    {
-        btCollisionShape* shape = collisionShapes[j];
-        collisionShapes[j] = 0;
-        delete shape;
-    }
-
-    //delete dynamics world
-    delete dynamicsWorld;
-
-    //delete solver
-    delete solver;
-
-    //delete broadphase
-    delete overlappingPairCache;
-
-    //delete dispatcher
-    delete dispatcher;
-
-    delete collisionConfiguration;
-
-    //next line is optional: it will be cleared by the destructor when the array goes out of scope
-    collisionShapes.clear();
+    osgViewer::Viewer viewer;
+    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+    viewer.addEventHandler(new osgViewer::StatsHandler);
+    viewer.addEventHandler(new osgViewer::WindowSizeHandler);
+    if (updater.valid())
+        viewer.addEventHandler(updater.get());
+    viewer.setSceneData(root.get());
+    viewer.run();
+    delete bulletManager;
+    return 0;
 }

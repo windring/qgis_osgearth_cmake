@@ -136,6 +136,8 @@ else (PostgreSQL_FOUND)
     message(STATUS "PostgreSQL not found")
 endif (PostgreSQL_FOUND)
 
+find_package(Bullet CONFIG REQUIRED)
+
 include_directories(
         ${OSGEARTH_INCLUDE_DIR}
         # ${OPENSCENEGRAPH_INCLUDE_DIR}
@@ -147,6 +149,7 @@ include_directories(
         ${GDAL_INCLUDE_DIR}
         ${CURL_INCLUDE_DIRS}
         ${PostgreSQL_INCLUDE_DIR}
+        ${BULLET_INCLUDE_DIRS}
 )
 
 aux_source_directory(osgQOpenGL OSGQOPENGL_SRC)
@@ -269,6 +272,10 @@ set(LINK_LIBS
         Qt5::OpenGL
         Qt5::Gui
         # ${GEOS_LIBRARY}
+        BulletDynamics
+        BulletCollision
+        LinearMath
+        Bullet3Common
         ${LINUX_ADDITION_LINK})
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
@@ -322,7 +329,8 @@ add_executable(TestPrecipitationEffect tests/TestPrecipitationEffect.cpp)
 target_link_libraries(TestPrecipitationEffect ${LINK_LIBS})
 add_test(NAME TestPrecipitationEffect COMMAND TestPrecipitationEffect)
 
-find_package(Bullet CONFIG REQUIRED)
-include_directories(${BULLET_INCLUDE_DIRS})
-add_executable(TestBullet tests/TestBullet.cpp)
-target_link_libraries(TestBullet BulletDynamics BulletCollision LinearMath) # LinearMath Bullet3Common BulletDynamics BulletSoftBody)
+add_executable(TestBullet tests/TestBullet.cpp MultiLayerTileMap/BulletManager.cpp)
+target_link_libraries(TestBullet ${LINK_LIBS}) # BulletDynamics BulletSoftBody)
+
+add_executable(TestVehicleBullet tests/TestVehicleBullet.cpp ${MULTILAYERTILEMAP_SRC})
+target_link_libraries(TestVehicleBullet ${LINK_LIBS}) # BulletDynamics BulletSoftBody)

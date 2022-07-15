@@ -7,10 +7,12 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/EarthManipulator>
 #include <osgDB/ReadFile>
 #include <osg/CoordinateSystemNode>
 #include <osgGA/GUIEventHandler>
+#include <osgGA/StateSetManipulator>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Registry>
 #include <osg/Quat>
@@ -157,6 +159,8 @@ int main(int argc, char *argv[]) {
                          viewer->setSceneData(root);
                          GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
                          viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+                         viewer->addEventHandler(new osgGA::StateSetManipulator(viewer->getCamera()->getOrCreateStateSet()));
+                         viewer->addEventHandler(new osgViewer::StatsHandler);
                          return Catch::Session().run(argc, argv);
                      });
 
