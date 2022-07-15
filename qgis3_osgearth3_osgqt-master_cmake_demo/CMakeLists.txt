@@ -8,7 +8,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_definitions(-D_USE_MATH_DEFINES)
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
@@ -18,7 +18,7 @@ message(STATUS "Find libraries suffixes: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 
 list(APPEND CMAKE_MODULE_PATH "${${PROJECT_NAME}_SOURCE_DIR}/CMakeModules")
 
-set(OUR_DEV_PACKAGE "/home/titor/vcpkg/installed/x64-linux")
+set(OUR_DEV_PACKAGE "/home/ubuntu/vcpkg/installed/x64-linux-dynamic")
 set(ENV{OSGEO4W_ROOT} "G:/program/osgeo4w")
 set(OSGEO4W_QGIS_SUBDIR "qgis-ltr-dev")
 set(Qt5_DIR "G:/program/osgeo4w/apps/Qt5/lib/cmake/Qt5")
@@ -156,6 +156,14 @@ link_directories("${OUR_DEV_PACKAGE}/lib/"
     "${OUR_DEV_PACKAGE}/lib64/osgPlugins-3.6.5/"
     )
 
+if(UNIX AND NOT APPLE)
+	link_directories("${OUR_DEV_PACKAGE}-dynamic/lib/"
+		"${OUR_DEV_PACKAGE}-dynamic/lib64/"
+		"${OUR_DEV_PACKAGE}-dynamic/lib/osgPlugins-3.6.5/"
+		"${OUR_DEV_PACKAGE}-dynamic/lib64/osgPlugins-3.6.5/"
+		)
+endif()
+
 add_executable(${PROJECT_NAME}
         main.cpp
         ${OSGQOPENGL_SRC}
@@ -186,7 +194,7 @@ if(UNIX AND NOT APPLE)
         -lpng16
         -ltiff
         -lcurl-gnutls
-        -lgeos-3.9.1
+	# -lgeos-3.9.1
         -ljson-c
         -lwebp
         -lnetcdf
@@ -263,11 +271,11 @@ target_link_libraries(${PROJECT_NAME}
         ${OPENTHREADS_LIBRARY}
         ${QGIS_CORE_LIBRARY}
         ${QGIS_GUI_LIBRARY}
-         Qt5::Core
-         Qt5::Widgets
-         Qt5::Xml
-         Qt5::OpenGL
-         Qt5::Gui
+        Qt5::Core
+        Qt5::Widgets
+        Qt5::Xml
+        Qt5::OpenGL
+        Qt5::Gui
         # ${GEOS_LIBRARY}
         ${LINUX_ADDITION_LINK}
         )
