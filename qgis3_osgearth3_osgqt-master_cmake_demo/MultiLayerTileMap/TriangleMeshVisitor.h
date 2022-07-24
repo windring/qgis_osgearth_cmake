@@ -6,12 +6,13 @@
 #define TILEMAPMANAGERDEMO_TRIANGLEMESHVISITOR_H
 
 #include <osg/NodeVisitor>
+#include <osgEarthDrivers/engine_rex/SurfaceNode>
 
 namespace MultiLayerTileMap {
 
     class TriangleMeshVisitor : public osg::NodeVisitor {
     public:
-        TriangleMeshVisitor(osg::NodeVisitor::TraversalMode traversalMode = TRAVERSE_ALL_CHILDREN);
+        TriangleMeshVisitor(osg::NodeVisitor::TraversalMode traversalMode = TRAVERSE_ACTIVE_CHILDREN);
 
         virtual void reset();
 
@@ -19,12 +20,17 @@ namespace MultiLayerTileMap {
             return mesh.get();
         }
 
-        void apply(osg::Geode &geode);
+//        void apply(osgEarth::REX::SurfaceNode &surfaceNode);
+
+        void apply(osg::Node &node);
 
     protected:
         void applyDrawable(osg::Drawable *drawable);
 
         osg::ref_ptr<osg::Vec3Array> mesh;
+
+    private:
+        int _indent = 0;
     };
 
     struct TriangleMeshFunc

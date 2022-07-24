@@ -122,7 +122,7 @@ endif (GDAL_FOUND)
 # endif (Threads_FOUND)
 
 # set(OpenGL_GL_PREFERENCE GLVND)
-# find_package(OpenGL REQUIRED)
+find_package(OpenGL REQUIRED)
 
 find_package(PostgreSQL REQUIRED)
 if (PostgreSQL_FOUND)
@@ -150,6 +150,7 @@ include_directories(
         ${CURL_INCLUDE_DIRS}
         ${PostgreSQL_INCLUDE_DIR}
         ${BULLET_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
 )
 
 aux_source_directory(osgQOpenGL OSGQOPENGL_SRC)
@@ -276,6 +277,7 @@ set(LINK_LIBS
         BulletCollision
         LinearMath
         Bullet3Common
+        ${OPENGL_LIBRARIES}
         ${LINUX_ADDITION_LINK})
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
@@ -329,8 +331,18 @@ add_executable(TestPrecipitationEffect tests/TestPrecipitationEffect.cpp)
 target_link_libraries(TestPrecipitationEffect ${LINK_LIBS})
 add_test(NAME TestPrecipitationEffect COMMAND TestPrecipitationEffect)
 
-add_executable(TestBullet tests/TestBullet.cpp MultiLayerTileMap/BulletManager.cpp)
+add_executable(TestBullet tests/TestBullet.cpp MultiLayerTileMap/BulletManager.cpp ${MULTILAYERTILEMAP_SRC})
 target_link_libraries(TestBullet ${LINK_LIBS}) # BulletDynamics BulletSoftBody)
 
 add_executable(TestVehicleBullet tests/TestVehicleBullet.cpp ${MULTILAYERTILEMAP_SRC})
 target_link_libraries(TestVehicleBullet ${LINK_LIBS}) # BulletDynamics BulletSoftBody)
+add_dependencies(TestVehicleBullet copy_assets)
+
+add_executable(TestOsgGL3 tests/testOsgGL3.cpp)
+target_link_libraries(TestOsgGL3 ${LINK_LIBS})
+
+add_executable(TestOsgGLES3 tests/testOsgGLES3.cpp)
+target_link_libraries(TestOsgGLES3 ${LINK_LIBS})
+
+add_executable(TestOsgGL3InDrawBack tests/testOsgGL3InDrawBack.cpp)
+target_link_libraries(TestOsgGL3InDrawBack ${LINK_LIBS})

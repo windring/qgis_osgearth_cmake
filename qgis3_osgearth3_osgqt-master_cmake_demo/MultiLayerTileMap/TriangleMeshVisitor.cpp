@@ -4,7 +4,7 @@
 #include <osg/Geode>
 #include <osg/TriangleFunctor>
 
-#include "TriangleMeshVisitor.h"
+    #include "TriangleMeshVisitor.h"
 
 namespace MultiLayerTileMap {
     TriangleMeshVisitor::TriangleMeshVisitor(osg::NodeVisitor::TraversalMode traversalMode) :
@@ -16,11 +16,9 @@ namespace MultiLayerTileMap {
         mesh->clear();
     }
 
-    void TriangleMeshVisitor::apply(osg::Geode &geode) {
-        for(unsigned int idx = 0; idx < geode.getNumDrawables(); idx++ ) {
-            applyDrawable(geode.getDrawable(idx));
-        }
-    }
+//    void TriangleMeshVisitor::apply(osgEarth::REX::SurfaceNode &surfaceNode) {
+//        applyDrawable(surfaceNode.getDrawable());
+//    }
 
     void TriangleMeshVisitor::applyDrawable(osg::Drawable *drawable) {
         osg::TriangleFunctor< TriangleMeshFunc > functor;
@@ -31,5 +29,26 @@ namespace MultiLayerTileMap {
         {
             mesh->push_back( *iter * m );
         }
+    }
+
+    void TriangleMeshVisitor::apply(osg::Node& node) {
+        _indent++;
+//        for (int i = 0; i < _indent; i++) {
+//            putchar(' ');
+//        }
+//        printf("apply node:  libraryName: %s className: %s compoundClassNmae: %s\n",
+//               node.libraryName(), node.className(), node.getCompoundClassName().c_str());
+        // ->traverse Rex::TileNode
+        // ->Rex::SurfaceNode accept
+        // ->osg::Group accept
+        // ->osg::Group traverse *this
+        // x no  REX::SurfaceNode accept, only osg::Group accept
+        // ->TileDrawable accept->
+        if (dynamic_cast<osgEarth::REX::SurfaceNode*>(&node) != nullptr) {
+            applyDrawable(dynamic_cast<osgEarth::REX::SurfaceNode*>(&node)->getDrawable());
+        } else {
+            traverse(node);
+        }
+        _indent--;
     }
 } // MultiLayerTileMap

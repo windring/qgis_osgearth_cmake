@@ -4,6 +4,8 @@
 //
 
 #include <osg/ComputeBoundsVisitor>
+#include <future>
+#include <QTimer>
 
 #include "BulletManager.h"
 #include "TriangleMeshVisitor.h"
@@ -76,9 +78,9 @@ namespace MultiLayerTileMap {
         return shape;
     }
 
-    void BulletManager::createSimplePlaneFromOSG(const osg::Plane &plane) {
+    int BulletManager::createSimplePlaneFromOSG(const osg::Plane &plane) {
         if (dynamicsWorld == nullptr) { // 物理世界未初始化
-            return;
+            return -1;
         }
         osg::Vec3 norm = plane.getNormal();
         auto *groundShape = new btStaticPlaneShape(btVector3(norm[0], norm[1], norm[2]),
@@ -92,6 +94,7 @@ namespace MultiLayerTileMap {
                                                                  btVector3(0.0, 0.0, 0.0)); // 惯性
         auto *groundBody = new btRigidBody(groundRigidInfo);
         dynamicsWorld->addRigidBody(groundBody);
+        return registerRigidBodyAndGetKey(groundBody);
     }
 
     const btCollisionShape *BulletManager::getCollisionShapeByKey(const int key) {
@@ -130,12 +133,22 @@ namespace MultiLayerTileMap {
     btTriangleMeshShape *BulletManager::getTriangleMeshShapeCollisionShapeFromOSG(osg::Node *node) {
         TriangleMeshVisitor visitor;
         node->accept( visitor );
-
         osg::Vec3Array* vertices = visitor.getTriangleMesh();
         if( vertices->size() < 3 )
         {
-            osg::notify( osg::WARN ) << "BulletManager::getConvexHullCollisionShapeFromOSG: vertices->size() < 3" << std::endl;
+            osg::notify( osg::WARN ) << "BulletManager::getTriangleMeshShapeCollisionShapeFromOSG: vertices->size() < 3" << std::endl;
+            osg::notify( osg::WARN ) << "BulletManager::getTriangleMeshShapeCollisionShapeFromOSG: vertices->size(): " << vertices->size() << std::endl;
             return nullptr;
+        }
+
+        osg::EllipsoidModel em;
+        for(auto & vertice : *vertices)
+        {
+//            printf("%g %g %g\n", vertice.x(), vertice.y(), vertice.z());
+            em.convertLatLongHeightToXYZ(osg::DegreesToRadians(vertice.y()), osg::DegreesToRadians(vertice.x()), vertice.z(),
+                                         reinterpret_cast<double &>(vertice.x()),
+                                         reinterpret_cast<double &>(vertice.y()),
+                                         reinterpret_cast<double &>(vertice.z()));
         }
 
         auto* mesh = new btTriangleMesh;
@@ -153,9 +166,9 @@ namespace MultiLayerTileMap {
         return meshShape;
     }
 
-    void BulletManager::createTerrainFromOSG() {
+    int BulletManager::createTerrainFromOSG() {
         if (dynamicsWorld == nullptr || mapNode == nullptr) { // 物理世界和 OSG 世界未初始化
-            return;
+            return -1;
         }
         auto *node = mapNode->getTerrainEngine()->getNode();
         auto *groundShape = getTriangleMeshShapeCollisionShapeFromOSG(node);
@@ -176,13 +189,28 @@ namespace MultiLayerTileMap {
         } else {
             terrainRigidBodyKey = registerRigidBodyAndGetKey(groundBody);
         }
+        return terrainRigidBodyKey;
     }
 
     void BulletManager::BulletTerrainChangedCallback::onTileUpdate(const osgEarth::TileKey &tileKey, osg::Node *graph,
                                                                    osgEarth::TerrainCallbackContext &) {
-        if (_mapNode != nullptr) {
-
-
+        if (_bulletManager != nullptr) {
+            onTileUpdateTimeTick = osg::Timer::instance()->tick();
+            osg::notify( osg::WARN ) << "Start singleShot for timeoutCreateTerrain at: " << onTileUpdateTimeTick << std::endl;
+            // QTimer::singleShot(timeoutMillisecond, this, &BulletTerrainChangedCallback::timeoutCreateTerrain);
         }
+    }
+
+    void BulletManager::BulletTerrainChangedCallback::timeoutCreateTerrain() {
+//        osg::Timer_t newTimeTick = osg::Timer::instance()->tick();
+//        if (osg::Timer().delta_m(newTimeTick, onTileUpdateTimeTick) < timeoutMillisecond) {
+//            osg::notify( osg::WARN ) << "Give up createTerrainFromOSG at: " << newTimeTick << std::endl;
+//            return;
+//        } else {
+//            if (_bulletManager != nullptr) {
+//                osg::notify( osg::WARN ) << "Run createTerrainFromOSG at: " << newTimeTick << std::endl;
+//                _bulletManager->createTerrainFromOSG();
+//            }
+//        }
     }
 } // MultiLayerTileMap

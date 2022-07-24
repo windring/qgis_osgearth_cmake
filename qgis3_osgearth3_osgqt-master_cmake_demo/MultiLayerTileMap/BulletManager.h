@@ -77,19 +77,20 @@ namespace MultiLayerTileMap {
 
         class BulletTerrainChangedCallback : public osgEarth::TerrainCallback
         {
-            osgEarth::MapNode *_mapNode = nullptr;
             BulletManager* _bulletManager = nullptr;
+            osg::Timer_t onTileUpdateTimeTick; // 单位是 tick
         public:
-            explicit BulletTerrainChangedCallback(osgEarth::MapNode* mapNode, BulletManager* bulletManager) :
-                                                  _mapNode(mapNode), _bulletManager(bulletManager) { }
+            explicit BulletTerrainChangedCallback(BulletManager* bulletManager): _bulletManager(bulletManager) { }
 
             /// 地形瓦片更新时触发
             /// \param tileKey
             /// \param graph
             void onTileUpdate(const osgEarth::TileKey& tileKey, osg::Node* graph, osgEarth::TerrainCallbackContext& ) override;
+
+            /// 延迟启动的地形面片生成程序
+            void timeoutCreateTerrain();
         };
     };
-
 } // MultiLayerTileMap
 
 #endif //TILEMAPMANAGERDEMO_BULLETMANAGER_H
