@@ -150,6 +150,41 @@ namespace MultiLayerTileMap {
         ///     \retval 非空 指向地图图层的指针
         osgEarth::Layer *findLayerByName(const std::string &layerName);
 
+        /// 向地图添加 PostGIS 中的 Shapefile 图层
+        /// 根据字段生成类似：
+        /// PG:"dbname='databasename' host='addr' port='5432' user='x' password='y' tables='table1'"
+        /// 的连接字符串
+        /// 关于 PG 连接字符串的更多信息：https://gdal.org/drivers/vector/pg.html
+        /// \example
+        /// \code
+        ///     mapLayerManager->addShapefileLayerFromPostGIS(
+        //          "host",
+        //          "port",
+        //          "userName",
+        //          "password",
+        //          "dbName",
+        //          "tableName",
+        //          "layerName")
+        /// \param host 数据库主机地址
+        /// \param port 数据库端口
+        /// \param user 数据库用户名
+        /// \param password 数据库密码
+        /// \param dbname 数据库名
+        /// \param table 显示的数据表名，默认 tables 和 table 相同，在底层实现中，tables 用于加载数据表，table 指定要素层使用的数据表
+        /// \param layerName 图层名
+        /// \return
+        ///     \retval true 成功
+        ///     \retval false 失败
+        bool addShapefileLayerFromPostGIS(
+                const std::string &host,
+                const std::string &port,
+                const std::string &user,
+                const std::string &password,
+                const std::string &dbname,
+                const std::string &table,
+                const std::string &layerName
+                );
+
         /// 向地图添加 Shapefile 图层
         /// \param fileUrl 文件路径
         /// \param layerName 图层名字

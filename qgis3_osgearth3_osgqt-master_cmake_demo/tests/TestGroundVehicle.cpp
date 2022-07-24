@@ -73,7 +73,16 @@ TEST_CASE("addShapefileLayer") {
     PAUSE
     const std::string filename = "./data/demo06/AGM/AGM_BeiluRiver.shp";
     const std::string layerName = "shp-layer";
-    REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
+//    REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
+    REQUIRE(mapLayerManager->addShapefileLayerFromPostGIS(
+            "localhost",
+            "5432",
+            "postgres",
+            "postgres",
+            "postgis_32_sample",
+            "agm_beiluriver",
+            layerName
+            ));
     REQUIRE(mapLayerManager->findLayerByName(layerName));
 }
 
@@ -135,8 +144,8 @@ TEST_CASE("TankMove") {
 //}
 
 int main(int argc, char *argv[]) {
-//    osg::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
-//    osgEarth::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
+//    osg::setNotifyLevel(osg::NotifySeverity::INFO);
+//    osgEarth::setNotifyLevel(osg::NotifySeverity::INFO);
 
     QApplication app(argc, argv);
 

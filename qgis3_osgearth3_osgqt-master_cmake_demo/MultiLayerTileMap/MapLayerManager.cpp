@@ -353,4 +353,71 @@ namespace MultiLayerTileMap {
         return group;
     }
 
+    bool MapLayerManager::addShapefileLayerFromPostGIS(const string &host,
+                                                       const string &port,
+                                                       const string &user,
+                                                       const string &password,
+                                                       const string &dbname,
+                                                       const string &table,
+                                                       const string &layerName) {
+        auto *data = new OGRFeatureSource;
+        string connection;
+        connection += "PG:host='";
+        connection += host;
+        connection += "' port='";
+        connection += port;
+        connection += "' user='";
+        connection += user;
+        connection += "' dbname='";
+        connection += dbname;
+        connection += "' password='";
+        connection += password;
+        connection += "' tables='";
+        connection += table;
+        connection += "'";
+        cout << connection << endl;
+        data->setConnection(connection);
+        data->setLayer(table);
+        data->options().buildSpatialIndex() = true;
+        if (data->open().isError()) {
+            osg::notify( osg::WARN ) << data->open().message() << std::endl;
+            return false;
+        }
+
+        Style style;
+
+        auto *alt = style.getOrCreate<AltitudeSymbol>();
+        alt->clamping() = alt->CLAMP_TO_TERRAIN; // 矢量贴地
+        alt->binding() = alt->BINDING_VERTEX; // 矢量文件的每个顶点独立贴合
+
+        auto *render = style.getOrCreate<RenderSymbol>();
+
+        auto *line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color(Color::Yellow, 0.5f);
+        line->stroke()->width() = 7.5f;
+        line->stroke()->widthUnits() = Units::METERS;
+
+        auto *polygon = style.getOrCreate<PolygonSymbol>();
+        polygon->fill()->color() = Color(Color::Cyan, 0.4f);
+        polygon->outline() = true;
+
+        auto *point = style.getOrCreateSymbol<PointSymbol>();
+        point->fill()->color() = Color::Blue;
+        point->size() = 8;
+
+        auto *extrusion = style.getOrCreate<ExtrusionSymbol>();
+        extrusion->height() = 250000.0;
+
+        auto *layer = new FeatureImageLayer();
+        layer->setName(layerName);
+        layer->setFeatureSource(data);
+        layer->setStyleSheet(new StyleSheet());
+        layer->getStyleSheet()->addStyle(style);
+
+        mapNode->open(); // TODO: 这行是否必要？
+        Map *map = mapNode->getMap();
+        map->addLayer(layer);
+        map->addLayer(data);
+        return true;
+    }
 } // MultiLayerTileMap
