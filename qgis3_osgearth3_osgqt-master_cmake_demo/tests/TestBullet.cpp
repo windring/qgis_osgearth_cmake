@@ -12,7 +12,7 @@ using namespace MultiLayerTileMap;
 BulletManager *bulletManager = nullptr;
 
 class SampleRigidUpdater : public osgGA::GUIEventHandler {
-    typedef std::map<int, osg::observer_ptr<osg::MatrixTransform>> MTNodeMap;
+    typedef std::map<btRigidBody*, osg::observer_ptr<osg::MatrixTransform>> MTNodeMap;
     MTNodeMap _osgNodes;
     osg::observer_ptr<osg::Group> _root;
     BulletManager *_bulletManager;
@@ -32,7 +32,7 @@ public:
         _root->addChild(groundMT.get());
     }
 
-    int addPhysicsBox(osg::Box *shape, const osg::Vec3 &pos, const osg::Vec3 &vel, float mass) {
+    btRigidBody* addPhysicsBox(osg::Box *shape, const osg::Vec3 &pos, const osg::Vec3 &vel, float mass) {
         const osg::Vec3 &dim = shape->getHalfLengths();
         btCollisionShape *boxShape = new btBoxShape(btVector3(dim[0], dim[1], dim[2]));
         btTransform boxTransform;
@@ -55,8 +55,7 @@ public:
 
         // 物理速度
         pRigidBody->setLinearVelocity(btVector3(vel.x(), vel.y(), vel.z()));
-        int key = _bulletManager->registerRigidBodyAndGetKey(pRigidBody);
-        return key;
+        return pRigidBody;
     }
 
     bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa) override {
@@ -73,14 +72,14 @@ public:
                     dir = center - eye;
                     dir.normalize();
                     auto *pShape = new osg::Box(osg::Vec3(), 0.5f);
-                    int key = addPhysicsBox(pShape, eye, dir * 60.0f, 2.0);
-                    addOSGShape(key, pShape);
+                    btRigidBody* body = addPhysicsBox(pShape, eye, dir * 60.0f, 2.0);
+                    addOSGShape(body, pShape);
                 }
                 break;
             case osgGA::GUIEventAdapter::FRAME:
                 _bulletManager->getDynamicsWorld()->stepSimulation(1.f / 60.f, 10);
                 for (auto &itr: _osgNodes) {
-                    osg::Matrix matrix = bulletManager->getRigidBodyMatrixByKey(itr.first); // 获取在物理引擎中的矩阵
+                    osg::Matrix matrix = bulletManager->getRigidBodyMatrixByKey(itr.second.get()); // 获取在物理引擎中的矩阵
                     itr.second->setMatrix(matrix); // 设置矩阵到 OSG 场景的对应 Node
                 }
                 break;
@@ -90,13 +89,14 @@ public:
         return false;
     }
 
-    void addOSGShape(int key, osg::Shape *shape) {
+    void addOSGShape(btRigidBody* body, osg::Shape *shape) {
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform;
         osg::ref_ptr<osg::Geode> geode = new osg::Geode;
         geode->addDrawable(new osg::ShapeDrawable(shape));
         mt->addChild(geode.get());
         _root->addChild(mt.get());
-        _osgNodes[key] = mt;
+        _osgNodes[body] = mt;
+        _bulletManager->registerRigidBodyAndGetKey(mt.get(), body);
     }
 };
 
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
     bulletManager = new BulletManager;
     bulletManager->getDynamicsWorld()->setGravity(btVector3(0.0f, 0.0f, -9.8f)); // 设置重力
     osg::Plane plane(0.0f, 0.0f, 1.0f, 0.0f);
-    bulletManager->createSimplePlaneFromOSG(plane); // 创建平面
+    bulletManager->createSimplePlaneForDebug(plane); // 创建平面
 
     osg::ArgumentParser arguments(&argc, argv);
 
@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
     for (unsigned int i = 0; i < 10; ++i) {
         for (unsigned int j = 0; j < 10; ++j) {
             auto *pShape = new osg::Box(osg::Vec3(), 0.99f);
-            int key = rigidUpdater->addPhysicsBox(pShape,
+            btRigidBody* key = rigidUpdater->addPhysicsBox(pShape,
                                                   osg::Vec3((float) i, 0.0f, (float) j + 0.5f), osg::Vec3(), 1.0f);
             rigidUpdater->addOSGShape(key, pShape);
         }

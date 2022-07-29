@@ -5,33 +5,11 @@
 #ifndef TILEMAPMANAGERDEMO_TRIANGLEMESHVISITOR_H
 #define TILEMAPMANAGERDEMO_TRIANGLEMESHVISITOR_H
 
-#include <osg/NodeVisitor>
 #include <osgEarthDrivers/engine_rex/SurfaceNode>
+#include <iostream>
+#include <osg/io_utils>
 
 namespace MultiLayerTileMap {
-
-    class TriangleMeshVisitor : public osg::NodeVisitor {
-    public:
-        TriangleMeshVisitor(osg::NodeVisitor::TraversalMode traversalMode = TRAVERSE_ACTIVE_CHILDREN);
-
-        virtual void reset();
-
-        osg::Vec3Array *getTriangleMesh() {
-            return mesh.get();
-        }
-
-//        void apply(osgEarth::REX::SurfaceNode &surfaceNode);
-
-        void apply(osg::Node &node);
-
-    protected:
-        void applyDrawable(osg::Drawable *drawable);
-
-        osg::ref_ptr<osg::Vec3Array> mesh;
-
-    private:
-        int _indent = 0;
-    };
 
     struct TriangleMeshFunc
     {
@@ -49,6 +27,35 @@ namespace MultiLayerTileMap {
 
         osg::ref_ptr< osg::Vec3Array > vertices;
     };
+
+    struct NormalPrint
+    {
+        int triangleCount = 0;
+
+        void operator() (const osg::Vec3& v1, bool) const
+        {
+            std::cout << "\rpoint("<<v1<<")"<<std::endl;
+        }
+
+        void operator() (const osg::Vec3& v1, const osg::Vec3& v2, bool) {
+            std::cout << "\tline("<<v1<<") ("<<v2<<")"<<std::endl;
+        }
+
+        void operator() (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3, bool) {
+            triangleCount += 1;
+            osg::Vec3f normal = (v2-v1)^(v3-v2);
+            normal.normalize();
+            std::cout << "\ttriangle "<<triangleCount <<" ("<<v1<<") ("<<v2<<") ("<<v3<<") "<<") normal ("<<normal<<")"<<std::endl;
+        }
+
+        void operator() (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3,const osg::Vec3& v4, bool) const
+        {
+            osg::Vec3 normal = (v2-v1)^(v3-v2);
+            normal.normalize();
+            std::cout << "\tquad("<<v1<<") ("<<v2<<") ("<<v3<<") ("<<v4<<") "<<")"<<std::endl;
+        }
+    };
+
 } // MultiLayerTileMap
 
 #endif //TILEMAPMANAGERDEMO_TRIANGLEMESHVISITOR_H
