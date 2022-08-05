@@ -100,12 +100,6 @@ namespace MultiLayerTileMap {
     }
 
     const btCollisionShape *BulletManager::getCollisionShapeByKey(const osg::Node *pNode) {
-//        auto **ppShape = collisionShapePool.find(key);
-//        if (ppShape == nullptr) {
-//            return nullptr;
-//        } else {
-//            return *ppShape;
-//        }
         if (pNode == nullptr) {
             return nullptr;
         }
@@ -230,9 +224,6 @@ namespace MultiLayerTileMap {
                                                            btShape, // 碰撞形状
                                                            btVector3(0.0, 0.0, 0.0)); // 惯性
         auto *rigidBody = new btRigidBody(rigidInfo);
-
-
-
         dynamicsWorld->addRigidBody(rigidBody);
         if (tileKey2NodeMap.find(key) != tileKey2NodeMap.end()) {
             // 瓦片已经存在，瓦片刚体可能已经存在，先尝试删除
@@ -257,9 +248,9 @@ namespace MultiLayerTileMap {
                                                                    osg::Node *graph,
                                                                    osgEarth::TerrainCallbackContext &context) {
         if (_bulletManager != nullptr) {
-            auto lod = tileKey.getLOD();
-            osg::notify(osg::ALWAYS) << "LOD: " << lod << std::endl;
-            if (lod != _bulletManager->getSelectedTerrainTileLod()) {
+		  auto lod = tileKey.getLOD();
+		  osg::notify(osg::ALWAYS) << "LOD: " << lod << std::endl;
+		  if (lod != _bulletManager->getSelectedTerrainTileLod()) {
                 return;
             }
             onTileUpdateTimeTick = osg::Timer::instance()->tick();

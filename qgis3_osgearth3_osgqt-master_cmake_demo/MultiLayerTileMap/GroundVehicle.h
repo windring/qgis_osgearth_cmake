@@ -9,6 +9,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgParticle/SmokeEffect>
 #include <osgViewer/Viewer>
+#include <osg/io_utils>
 
 #include "MapLayerManager.h"
 #include "OGRManager.h"
@@ -81,7 +82,8 @@ class GroundVehicle {
 				const osg::Vec3d &lonLatAlt,
 				const osg::Vec3d &picHeadingRoll,
 				const osg::Vec3d &scaleFactor,
-				const std::string &_shapefileDatasetName);
+				const std::string &_shapefileDatasetName,
+				bool hasSmoke = true);
 
   /// 获取载具包络中心点到底部的距离
   /// \return 载具包络中心点到底部的距离
@@ -101,6 +103,9 @@ class GroundVehicle {
   /// \param pos
   void setEndWorldPos(osg::Vec3d pos) {
 	endWorldPos = pos;
+	osg::notify(osg::ALWAYS) <<
+		mapLayerManager->getEarthEllipsoid().geocentricToGeodetic(pos)
+		<< std::endl;
   }
 
   /// 获取模型 BB 盒，不包括烟雾部分

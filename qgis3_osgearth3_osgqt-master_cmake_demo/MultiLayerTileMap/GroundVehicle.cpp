@@ -52,14 +52,17 @@ GroundVehicle::GroundVehicle(MapLayerManager *_mapLayerManager,
 							 const osg::Vec3d &lonLatAlt,
 							 const osg::Vec3d &picHeadingRoll,
 							 const osg::Vec3d &scaleFactor,
-							 const std::string &_shapefileDatasetName) :
+							 const std::string &_shapefileDatasetName,
+							 bool hasSmoke) :
 	mapLayerManager(_mapLayerManager),
 	speedManager(new SpeedManager(_ogrManager, _mapLayerManager->getEarthSRS(), _shapefileDatasetName)) {
 
   pureModel = readNodeFile(filename);
   osgEarth::Registry::shaderGenerator().run(pureModel);
-  pureModel->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
-  pureModel->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON);
+  pureModel->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL,
+											osg::StateAttribute::ON |
+											osg::StateAttribute::PROTECTED |
+											osg::StateAttribute::OVERRIDE);
 
   tankTrans = new osg::MatrixTransform;
   tankTrans->setMatrix(osg::Matrix::scale(scaleFactor));
@@ -72,26 +75,33 @@ GroundVehicle::GroundVehicle(MapLayerManager *_mapLayerManager,
   deltaHeight = modelBB.center().z() - modelBB.zMin();
   osg::Vec3d newLonLatAlt = lonLatAlt + osg::Vec3d{0, 0, deltaHeight};
 
-  const osg::Vec3d smokePosition = {0, 0, 0};
-  const osg::Vec3d smokeWind{0, 0, 10};
-  const float smokeScale = 10;
-  const float smokeIntensity = 10;
-  const double smokeDuration = 4;
-  tankSmoke = new osgParticle::SmokeEffect(smokePosition, smokeScale, smokeIntensity);
-  tankSmoke->setWind(smokeWind);
-  tankSmoke->setParticleDuration(smokeDuration);
-  tankSmoke->getEmitter()->setEndless(true); // 一直冒灰
-  tankSmoke->setUseLocalParticleSystem(false);
-  smokeTrans = new osg::MatrixTransform;
-  smokeTrans->setMatrix(osg::Matrix::identity());
-  smokeTrans->addChild(tankSmoke);
-  smokeGeode = new osg::Geode;
-  smokeGeode->addDrawable(tankSmoke->getParticleSystem());
-  mapLayerManager->getMapNode()->addChild(smokeGeode);
-
   tankAndSmokeGroup = new osg::Group;
   tankAndSmokeGroup->addChild(tankTrans);
-  tankAndSmokeGroup->addChild(smokeTrans);
+
+  if (hasSmoke) {
+	const osg::Vec3d smokePosition = {0, 0, 0};
+	const osg::Vec3d smokeWind{0, 0, 10};
+	const float smokeScale = 10;
+	const float smokeIntensity = 10;
+	const double smokeDuration = 4;
+	tankSmoke = new osgParticle::SmokeEffect(smokePosition, smokeScale, smokeIntensity);
+	tankSmoke->setWind(smokeWind);
+	tankSmoke->setParticleDuration(smokeDuration);
+	tankSmoke->getEmitter()->setEndless(true); // 一直冒灰
+	tankSmoke->setUseLocalParticleSystem(false);
+	smokeTrans = new osg::MatrixTransform;
+	smokeTrans->setMatrix(osg::Matrix::identity());
+	smokeTrans->addChild(tankSmoke);
+	smokeGeode = new osg::Geode;
+	smokeGeode->addDrawable(tankSmoke->getParticleSystem());
+	mapLayerManager->getMapNode()->addChild(smokeGeode);
+	tankAndSmokeGroup->addChild(smokeTrans);
+
+	tankAndSmokeGroup->getOrCreateStateSet()->setMode(GL_LIGHTING,
+													  osg::StateAttribute::ON |
+													  osg::StateAttribute::PROTECTED|
+													  osg::StateAttribute::OVERRIDE);
+  }
 
   Style style;
   auto *modelSymbol = style.getOrCreate<ModelSymbol>();
@@ -103,7 +113,7 @@ GroundVehicle::GroundVehicle(MapLayerManager *_mapLayerManager,
   auto mapNode = mapLayerManager->getMapNode();
   tankGroup = new ModelNode(mapNode, style, nullptr);
   const SpatialReference *geoSRS = mapLayerManager->getEarthSRS();
-  GeoPoint tankPos(geoSRS, newLonLatAlt, AltitudeMode::ALTMODE_RELATIVE);
+  GeoPoint tankPos(geoSRS, newLonLatAlt, AltitudeMode::ALTMODE_ABSOLUTE);
   tankGroup->setPosition(tankPos);
 
   mapLayerManager->addEntity(tankGroup);
@@ -156,9 +166,9 @@ osgEarth::GeoPoint GroundVehicle::getNextGeoPos(double deltaDistance) {
 }
 
 void GroundVehicle::updateWorldPos(double deltaTime) {
-  if (tankGroup == nullptr || tankSmoke == nullptr) {
+  if (tankGroup == nullptr) {
 	// 初始化不正确
-	osg::notify(osg::DEBUG_INFO) << "updateWorldPos: tankGroup == nullptr || tankSmoke == nullptr" << std::endl;
+	osg::notify(osg::DEBUG_INFO) << "updateWorldPos: tankGroup == nullptr" << std::endl;
 	return;
   }
   double deltaDistance = getDeltaDistance(deltaTime);
@@ -219,7 +229,6 @@ osg::Vec3d GroundVehicle::MoveGUIEventHandler::moveWorldPos(const osgGA::GUIEven
 	if (tank) {
 	  tank->setEndWorldPos(worldPos);
 	}
-	printf("worldPos: %g %g %g\n", worldPos.x(), worldPos.y(), worldPos.z());
   }
   return pos;
 }

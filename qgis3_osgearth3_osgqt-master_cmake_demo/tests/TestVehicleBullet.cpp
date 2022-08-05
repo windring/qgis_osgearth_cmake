@@ -39,10 +39,12 @@ MapLayerManager *mapLayerManager = nullptr;
 osgQOpenGLWidget *widget = nullptr;
 EarthManipulator *em = nullptr;
 GroundVehicle *tank = nullptr;
+GroundVehicle *spaceShip = nullptr;
 OGRManager *ogrManager = nullptr;
 BulletManager *bulletManager = nullptr;
 BulletManager::BulletTerrainChangedCallback *bulletTerrainCallback = nullptr;
 const osg::Vec3d lonLatAlt{92.9431, 34.9348, 4551.91};
+const osg::Vec3d lonLatAlt2{92.9504, 34.9586, 9.80443};
 
 TEST_CASE("MapLayerManager(std::string file)") {
   PAUSE
@@ -63,9 +65,7 @@ TEST_CASE("addImageLayer") {
   REQUIRE(mapLayerManager->findLayerByName(layerName) != nullptr);
 }
 
-TEST_CASE("TankMove") {
-  // -268956 5.2314e+06 3.63454e+06
-  // 92.9431 34.9348 4551.91
+TEST_CASE("Tank") {
   const std::string filename = "./data/demo06/M60.obj";
 
   const osg::Vec3d picHeadingRoll{0, 0, 0};
@@ -74,10 +74,26 @@ TEST_CASE("TankMove") {
   tank = new GroundVehicle(mapLayerManager,
 						   ogrManager,
 						   filename,
-						   lonLatAlt,
+						   lonLatAlt2,
 						   picHeadingRoll,
 						   scaleFactor,
 						   shapefileDatasetName);
+}
+
+TEST_CASE("SpaceShip") {
+  const std::string filename = "E:\\Download\\OpenSceneGraph-Data-3.4.0\\OpenSceneGraph-Data\\spaceship.osgt";
+
+  const osg::Vec3d picHeadingRoll{0, 0, -45};
+  const osg::Vec3d scaleFactor{2, 2, 2};
+  const std::string shapefileDatasetName = "spaceShipShapefile";
+  spaceShip = new GroundVehicle(mapLayerManager,
+						   nullptr,
+						   filename,
+						   lonLatAlt,
+						   picHeadingRoll,
+						   scaleFactor,
+						   shapefileDatasetName,
+						   false);
 }
 
 TEST_CASE("createTerrainFromOSG") {
@@ -148,14 +164,14 @@ class SampleRigidUpdater : public osgGA::GUIEventHandler {
 
 	switch (ea.getEventType()) {
 	  case osgGA::GUIEventAdapter::PUSH:
-		if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) {
+		if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) {
 		  printf("fire\n");
 		  osg::Vec3 eye, center, up, dir;
 		  view->getCamera()->getViewMatrixAsLookAt(eye, center, up);
 		  dir = center - eye;
 		  dir.normalize();
 		  auto *pShape = new osg::Box(osg::Vec3(), 100.0f);
-		  btRigidBody *body = addPhysicsBox(pShape, eye, dir * 100.0f, 2.0);
+		  btRigidBody *body = addPhysicsBox(pShape, eye+dir*10, dir*1000.0f, 2.0);
 		  addOSGShape(body, pShape);
 		}
 		break;
@@ -190,13 +206,13 @@ class SampleRigidUpdater : public osgGA::GUIEventHandler {
 TEST_CASE("bullet & osg & osgEarth") {
   osg::notify(osg::ALWAYS) << "StartWorldPos: " << tank->getStartWorldPos() << std::endl;
   rigidUpdater = new SampleRigidUpdater(root, bulletManager);
-  btRigidBody *body = rigidUpdater->addPhysicsBox(tank->getPureBoundingBox(),
-												  tank->getStartWorldPos(),
-												  {0, 0, 0},
-												  0);
   // 暂时手动控制
+  // btRigidBody *body = rigidUpdater->addPhysicsBox(tank->getPureBoundingBox(),
+  // 											  tank->getStartWorldPos(),
+  // 											  {0, 0, 0},
+  // 											  0);
   // rigidUpdater->addOSGNode(body, tank->getTankMatrixTransform());
-  bulletManager->registerRigidBodyAndGetKey(tank->getTankMatrixTransform(), body);
+  // bulletManager->registerRigidBodyAndGetKey(tank->getTankMatrixTransform(), body);
 
   // 设置重力
   osg::Vec3d geocentricXYZ = mapLayerManager->getEarthEllipsoid().geodeticToGeocentric(lonLatAlt);
@@ -209,12 +225,13 @@ TEST_CASE("bullet & osg & osgEarth") {
 
   // 载具事件循环
   viewer->addEventHandler(tank->moveGUIEventHandler);
+  viewer->addEventHandler(spaceShip->moveGUIEventHandler);
 }
 
 int main(int argc, char **argv) {
   osgEarth::initialize();
-//    osg::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
-//    osgEarth::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
+  // osg::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
+  // osgEarth::setNotifyLevel(osg::NotifySeverity::DEBUG_FP);
   osg::ArgumentParser arguments(&argc, argv);
   bulletManager = new BulletManager;
   root = new osg::Group;
@@ -240,6 +257,8 @@ int main(int argc, char **argv) {
   viewer->setUpViewInWindow(0, 0, 1024, 960);
   viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
   GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
+  osg::ref_ptr<osg::StateSet> state = root->getOrCreateStateSet();
+  state->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
   Catch::Session().run(argc, argv);
   viewer->run();
   delete bulletManager;
