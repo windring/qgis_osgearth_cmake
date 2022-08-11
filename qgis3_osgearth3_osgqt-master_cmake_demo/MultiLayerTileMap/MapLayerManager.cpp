@@ -179,7 +179,7 @@ namespace MultiLayerTileMap {
         return layer;
     }
 
-    bool MapLayerManager::addShapefileLayer(const string &fileUrl, const string &layerName) {
+	FeatureImageLayer* MapLayerManager::addShapefileLayer(const string &fileUrl, const string &layerName) {
         auto *data = new OGRFeatureSource;
         data->setURL(fileUrl);
         data->options().buildSpatialIndex() = true;
@@ -227,8 +227,8 @@ namespace MultiLayerTileMap {
         mapNode->open(); // TODO: 这行是否必要？
         Map *map = mapNode->getMap();
         map->addLayer(layer);
-        map->addLayer(data);
-        return true;
+        // map->addLayer(data);
+        return layer;
     }
 
     bool MapLayerManager::writeShapefile(const osgEarth::Util::OGRFeatureSource *srcFeatureSource,

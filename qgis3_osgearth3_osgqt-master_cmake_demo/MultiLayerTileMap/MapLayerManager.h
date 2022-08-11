@@ -13,6 +13,7 @@
 #include <osgEarth/ModelNode>
 #include <osgEarth/Layer>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/FeatureImageLayer>
 #include <osgEarth/Ellipsoid>
 #include <string>
 
@@ -189,9 +190,7 @@ namespace MultiLayerTileMap {
         /// \param fileUrl 文件路径
         /// \param layerName 图层名字
         /// \return
-        ///     \retval true 成功
-        ///     \retval false 失败
-        bool addShapefileLayer(const std::string &fileUrl, const std::string &layerName);
+		osgEarth::FeatureImageLayer* addShapefileLayer(const std::string &fileUrl, const std::string &layerName);
 
         /// 根据 OGRFeatureSource 对象，写出 shapefile 文件
         /// \param srcFeatureSource 源对象

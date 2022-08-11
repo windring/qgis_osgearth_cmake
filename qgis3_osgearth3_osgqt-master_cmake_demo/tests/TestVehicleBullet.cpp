@@ -65,6 +65,23 @@ TEST_CASE("addImageLayer") {
   REQUIRE(mapLayerManager->findLayerByName(layerName) != nullptr);
 }
 
+// TEST_CASE("addShapefileLayer") {
+//   PAUSE
+//   const std::string filename = "./data/demo06/AGM/AGM_BeiluRiver.shp";
+//   const std::string layerName = "shp-layer";
+//   REQUIRE(mapLayerManager->addShapefileLayer(filename, layerName));
+//   // REQUIRE(mapLayerManager->addShapefileLayerFromPostGIS(
+// 	//   "localhost",
+// 	//   "5432",
+// 	//   "postgres",
+// 	//   "postgres",
+// 	//   "postgis_32_sample",
+// 	//   "agm_beiluriver",
+// 	//   layerName
+//   // ));
+//   REQUIRE(mapLayerManager->findLayerByName(layerName));
+// }
+
 TEST_CASE("Tank") {
   const std::string filename = "./data/demo06/M60.obj";
 
@@ -80,34 +97,43 @@ TEST_CASE("Tank") {
 						   shapefileDatasetName);
 }
 
-TEST_CASE("SpaceShip") {
-  const std::string filename = "E:\\Download\\OpenSceneGraph-Data-3.4.0\\OpenSceneGraph-Data\\spaceship.osgt";
-
-  const osg::Vec3d picHeadingRoll{0, 0, -45};
-  const osg::Vec3d scaleFactor{2, 2, 2};
-  const std::string shapefileDatasetName = "spaceShipShapefile";
-  spaceShip = new GroundVehicle(mapLayerManager,
-						   nullptr,
-						   filename,
-						   lonLatAlt,
-						   picHeadingRoll,
-						   scaleFactor,
-						   shapefileDatasetName,
-						   false);
-}
-
-TEST_CASE("createTerrainFromOSG") {
-  bulletTerrainCallback = new BulletManager::BulletTerrainChangedCallback(bulletManager);
-  mapLayerManager->getMapNode()->getTerrain()->addTerrainCallback(bulletTerrainCallback);
-}
-
-// TEST_CASE("addElevationLayer") {
-//   PAUSE
-//   const std::string filename = "./data/demo06/AGM/ASTGTMV003_N34E092_dem.tif";
-//   const std::string layerName = "AGM_BeiluRiver_Dem";
-//   REQUIRE(mapLayerManager->addElevationLayer(filename, layerName));
-//   REQUIRE(mapLayerManager->findLayerByName(layerName) != nullptr);
+// TEST_CASE("SpaceShip") {
+//   const std::string filename = "E:\\Download\\OpenSceneGraph-Data-3.4.0\\OpenSceneGraph-Data\\spaceship.osgt";
+//
+//   const osg::Vec3d picHeadingRoll{0, 0, -45};
+//   const osg::Vec3d scaleFactor{2, 2, 2};
+//   const std::string shapefileDatasetName = "spaceShipShapefile";
+//   spaceShip = new GroundVehicle(mapLayerManager,
+// 						   nullptr,
+// 						   filename,
+// 						   lonLatAlt,
+// 						   picHeadingRoll,
+// 						   scaleFactor,
+// 						   shapefileDatasetName,
+// 						   false);
 // }
+
+// TEST_CASE("createTerrainFromOSG") {
+//   bulletTerrainCallback = new BulletManager::BulletTerrainChangedCallback(bulletManager);
+//   mapLayerManager->getMapNode()->getTerrain()->addTerrainCallback(bulletTerrainCallback);
+// }
+
+TEST_CASE("addElevationLayer") {
+  PAUSE
+  const std::string filename = "./data/demo06/AGM/ASTGTMV003_N34E092_dem.tif";
+  const std::string layerName = "AGM_BeiluRiver_Dem";
+  REQUIRE(mapLayerManager->addElevationLayer(filename, layerName));
+  REQUIRE(mapLayerManager->findLayerByName(layerName) != nullptr);
+}
+
+TEST_CASE("createTerrain") {
+  PAUSE
+  const std::string url = "./data/demo06/AGM/AGM_BeiluRiver.shp";
+  OGRFeatureSource* ogrSource = new OGRFeatureSource();
+  ogrSource->setURL(url);
+  REQUIRE(ogrSource->open().isOK());
+  REQUIRE(bulletManager->createTerrain(ogrSource));
+}
 
 class SampleRigidUpdater : public osgGA::GUIEventHandler {
   typedef std::map<btRigidBody *, osg::MatrixTransform *> MTNodeMap;
@@ -165,9 +191,9 @@ class SampleRigidUpdater : public osgGA::GUIEventHandler {
 	switch (ea.getEventType()) {
 	  case osgGA::GUIEventAdapter::PUSH:
 		if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) {
-		  printf("fire\n");
 		  osg::Vec3 eye, center, up, dir;
 		  view->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+		  OSG_ALWAYS << "Fire: " << eye << std::endl;
 		  dir = center - eye;
 		  dir.normalize();
 		  auto *pShape = new osg::Box(osg::Vec3(), 100.0f);
@@ -175,7 +201,8 @@ class SampleRigidUpdater : public osgGA::GUIEventHandler {
 		  addOSGShape(body, pShape);
 		}
 		break;
-	  case osgGA::GUIEventAdapter::FRAME:_bulletManager->getDynamicsWorld()->stepSimulation(1.f / 60.f, 10);
+	  case osgGA::GUIEventAdapter::FRAME:
+		_bulletManager->getDynamicsWorld()->stepSimulation(1.f / 60.f, 10);
 		for (auto &itr : _osgNodes) {
 		  osg::Matrix matrix = bulletManager->getRigidBodyMatrixByKey(itr.second); // 获取在物理引擎中的矩阵
 		  itr.second->setMatrix(matrix); // 设置矩阵到 OSG 场景的对应 Node
@@ -225,7 +252,7 @@ TEST_CASE("bullet & osg & osgEarth") {
 
   // 载具事件循环
   viewer->addEventHandler(tank->moveGUIEventHandler);
-  viewer->addEventHandler(spaceShip->moveGUIEventHandler);
+  // viewer->addEventHandler(spaceShip->moveGUIEventHandler);
 }
 
 int main(int argc, char **argv) {
@@ -236,7 +263,6 @@ int main(int argc, char **argv) {
   bulletManager = new BulletManager;
   root = new osg::Group;
   em = new EarthManipulator();
-
 //    rigidUpdater->addGround();
 //    for (unsigned int i = 0; i < 10; ++i) {
 //        for (unsigned int j = 0; j < 10; ++j) {
@@ -246,21 +272,17 @@ int main(int argc, char **argv) {
 //            rigidUpdater->addOSGShape(key, pShape);
 //        }
 //    }
-  viewer = new osgViewer::Viewer;
-  viewer->addEventHandler(new osgGA::StateSetManipulator(viewer->getCamera()->getOrCreateStateSet()));
+  viewer = new osgViewer::Viewer(arguments);
+  // viewer->addEventHandler(new osgGA::StateSetManipulator(viewer->getCamera()->getOrCreateStateSet()));
   viewer->addEventHandler(new osgViewer::StatsHandler);
   viewer->addEventHandler(new osgViewer::WindowSizeHandler);
-//    if (updater.valid())
-//        viewer.addEventHandler(updater.get());
   viewer->setSceneData(root);
   viewer->setCameraManipulator(em);
-  viewer->setUpViewInWindow(0, 0, 1024, 960);
-  viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-  GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
-  osg::ref_ptr<osg::StateSet> state = root->getOrCreateStateSet();
-  state->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+  // viewer->setUpViewInWindow(0, 0, 1024, 960);
+  // viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+  // GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
+  // osg::ref_ptr<osg::StateSet> state = root->getOrCreateStateSet();
+  // state->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
   Catch::Session().run(argc, argv);
-  viewer->run();
-  delete bulletManager;
-  return 0;
+  return viewer->run();
 }
