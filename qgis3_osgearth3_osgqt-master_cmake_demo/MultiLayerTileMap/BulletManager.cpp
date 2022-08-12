@@ -41,30 +41,17 @@ BulletManager::~BulletManager() {
 	  delete obj;
 	}
   }
-
-  // 删除碰撞图形
-  // for (int i = 0; i < collisionShapePool.size(); i++) {
-  //    auto **ppShape = collisionShapePool.getAtIndex(i);
-  //    auto *pShape = *ppShape;
-  //    *ppShape = nullptr;
-  //    delete pShape;
-  // }
   for (auto &it : collisionShapeMap) {
 	delete it.second;
   }
-
   // 删除 dynamics 世界
   delete dynamicsWorld;
-
   // 删除解算器
   delete solver;
-
   // 删除宽相
   delete pairCache;
-
   // 删除调度器
   delete dispatcher;
-
   // 删除刚体配置
   delete collisionConfiguration;
 }
@@ -135,6 +122,7 @@ const osg::Node *BulletManager::registerRigidBodyAndGetKey(const osg::Node *pNod
 	dynamicsWorld->removeRigidBody(const_cast<btRigidBody *>(pOldBody));
 	delete pOldBody;
   }
+  dynamicsWorld->addRigidBody(const_cast<btRigidBody *>(pRigidBody));
   rigidBodyMap[pNode] = pRigidBody;
   return pNode;
 }
@@ -169,6 +157,7 @@ btBvhTriangleMeshShape *BulletManager::asBtBvhTriangleMeshShape(const osg::Vec3A
 					  btVector3(p2.x(), p2.y(), p2.z()),
 					  btVector3(p3.x(), p3.y(), p3.z()));
   }
+  OSG_ALWAYS << "Num of Triangles: " << mesh->getNumTriangles() << std::endl;
 
   auto *meshShape = new btBvhTriangleMeshShape(mesh, true);
   return meshShape;
@@ -224,7 +213,6 @@ const osg::Node *BulletManager::createTerrainTile(const TileKey &tileKey,
   /// \endcode
 
   auto *btShape = asBtBvhTriangleMeshShape(*vertices);
-  // auto *btShape = asBtBvhTriangleMeshShape(surfaceNode->getDrawable()->_mesh);
   auto key = tileKey.str();
 
   auto *motionState = new btDefaultMotionState(trans);
@@ -252,13 +240,15 @@ const osg::Node *BulletManager::createTerrainTile(const TileKey &tileKey,
 
   return graph;
 }
-const osg::Node *BulletManager::createTerrain(osgEarth::OGRFeatureSource *featureSource) {
+
+const osg::Node *BulletManager::createTerrainByOGRFeatureSource(osgEarth::OGRFeatureSource *featureSource) {
   for (int i = 0; i < featureSource->getFeatureCount(); i++) {
-	createTerrainByGeometry(featureSource->getFeature(i));
+	createTerrainByFeature(featureSource->getFeature(i));
   }
   return nullptr;
 }
-osg::Node *BulletManager::createTerrainByGeometry(osgEarth::Feature *feature) {
+
+osg::Node *BulletManager::createTerrainByFeature(osgEarth::Feature *feature) {
   Style geomStyle;
   /// \code
   /// geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
@@ -278,19 +268,39 @@ osg::Node *BulletManager::createTerrainByGeometry(osgEarth::Feature *feature) {
   featureNode->setMapNode(mapNode);
   mapNode->addChild(featureNode);
   featureNode->dirty();
+
+  createTerrainByFeatureNode(featureNode);
+
+  return featureNode;
+}
+osg::Node *BulletManager::createTerrainByFeatureNode(osgEarth::FeatureNode *featureNode) {
   FeatureNodeVisitor fNV;
+  // 获取顶点
   featureNode->accept(fNV);
-  for (const auto & vertices : fNV.list) {
-	btBvhTriangleMeshShape *btShape = asBtBvhTriangleMeshShape(*vertices);
-	OSG_ALWAYS << vertices->at(0) << std::endl;
-	auto *motionState = new btDefaultMotionState();
-	btRigidBody::btRigidBodyConstructionInfo rigidInfo(0.0, // 质量
-													   motionState,
-													   btShape, // 碰撞形状
-													   btVector3(0.0, 0.0, 0.0)); // 惯性
-	auto *rigidBody = new btRigidBody(rigidInfo);
-	dynamicsWorld->addRigidBody(rigidBody);
-  }
+  // 合并分支
+  fNV.mergeAllFeature();
+  // 重新计算中心点
+  fNV.reCalcCentroid();
+  // 获取位置矩阵
+  btTransform transform = fNV.getTransform();
+  OSG_ALWAYS << transform << std::endl;
+
+  btBvhTriangleMeshShape *btShape = asBtBvhTriangleMeshShape(*fNV.mergedFeature);
+  auto *motionState = new btDefaultMotionState(transform);
+  btRigidBody::btRigidBodyConstructionInfo rigidInfo(0.0, // 质量
+													 motionState,
+													 btShape, // 碰撞形状
+													 btVector3(0.0, 0.0, 0.0)); // 惯性
+  rigidInfo.m_friction = 1000; // 摩擦
+  rigidInfo.m_rollingFriction = 1000; // 滚动摩擦
+  rigidInfo.m_restitution = 0; // 恢复系数
+  rigidInfo.m_linearDamping = 1000; // 线性阻尼
+  rigidInfo.m_angularDamping = 1000; // 角阻尼
+
+  auto *rigidBody = new btRigidBody(rigidInfo);
+  registerRigidBodyAndGetKey(featureNode, rigidBody);
+  // OSG_ALWAYS << rigidBody->getWorldTransform() << std::endl;
+  // OSG_ALWAYS << rigidBody->getCenterOfMassPosition() << std::endl;
   return featureNode;
 }
 

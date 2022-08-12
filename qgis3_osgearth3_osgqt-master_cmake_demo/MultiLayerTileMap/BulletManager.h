@@ -22,6 +22,35 @@
 
 namespace MultiLayerTileMap {
 
+/// 重载 btVector3 的输出
+/// \param output
+/// \param vec
+/// \return
+inline std::ostream &operator<<(std::ostream &output, const btVector3 &vec) {
+  output << vec[0] << " " << vec[1] << " " << vec[2];
+  return output;
+}
+
+/// 重载 btMatrix3x3 的输出
+/// \param output
+/// \param matrix
+/// \return
+inline std::ostream &operator<<(std::ostream &output, const btMatrix3x3 &matrix) {
+  output << matrix.getRow(0) << "\n";
+  output << matrix.getRow(1) << "\n";
+  output << matrix.getRow(2);
+  return output;
+}
+
+/// 重载 btTransform 的输出
+/// \param output
+/// \param transform
+/// \return
+inline std::ostream &operator<<(std::ostream &output, const btTransform &transform) {
+  output << transform.getOrigin() << "\n" << transform.getBasis();
+  return output;
+}
+
 class BulletManager {
 
   btDefaultCollisionConfiguration *collisionConfiguration = nullptr; // 碰撞配置
@@ -41,10 +70,9 @@ class BulletManager {
   osgEarth::MapNode *mapNode = nullptr;
   int selectedTerrainTileLOD = 8; // 用于构建地形碰撞体的地图引擎 LOD 指数
  public:
-  [[nodiscard]] int getSelectedTerrainTileLod() const;
 
-  void setSelectedTerrainTileLod(int selectedTerrainTileLod);
-
+  /// 设置重力方向
+  /// \param vec
   void setGravity(const osg::Vec3 &vec) {
 	btVector3 gravityVector(vec.x(), vec.y(), vec.z());
 	dynamicsWorld->setGravity(gravityVector);
@@ -70,32 +98,25 @@ class BulletManager {
   /// \return 平面刚体
   btRigidBody *createSimplePlaneForDebug(const osg::Plane &plane);
 
-  /// 在物理引擎世界中创建地形瓦片
-  /// 三个参数分别对应 osgEarth::TerrainCallback 的三个参数
-  /// \param tileKey
-  /// \param graph
-  /// \param context
-  /// \return 地形瓦片在刚体池中的 key
-  const osg::Node *createTerrainTile(const osgEarth::TileKey &tileKey,
-									 osg::Node *graph,
-									 osgEarth::TerrainCallbackContext &context);
-
   /// 根据矢量图层生成刚体地形
   /// \param featureSource
   /// \return
-  const osg::Node *createTerrain(osgEarth::OGRFeatureSource *featureSource);
+  const osg::Node *createTerrainByOGRFeatureSource(osgEarth::OGRFeatureSource *featureSource);
 
   /// 根据几何形状生成刚体地形
   /// \param feature
   /// \return
-  osg::Node *createTerrainByGeometry(osgEarth::Feature* feature);
+  osg::Node *createTerrainByFeature(osgEarth::Feature *feature);
+
+  /// 根据 FeatureNode 生成刚体地形
+  /// \param featureNode
+  /// \return
+  osg::Node *createTerrainByFeatureNode(osgEarth::FeatureNode *featureNode);
 
   /// 根据 key 获取 collisionShapePool 中对应的碰撞盒
   /// \param pNode key
   /// \return 碰撞盒指针
-  const btCollisionShape
-  *
-  getCollisionShapeByKey(const osg::Node *pNode);
+  const btCollisionShape *getCollisionShapeByKey(const osg::Node *pNode);
 
   /// 根据 key 获取 rigidBodyPool 中对应碰撞盒的矩阵
   /// \param pNode key
@@ -112,9 +133,33 @@ class BulletManager {
   /// \return
   static btTransform asBtTransform(const osg::Matrix &matrix);
 
+  /// 由顶点创建三角面片网
+  /// \param vertices
+  /// \return
   static btBvhTriangleMeshShape *asBtBvhTriangleMeshShape(const osg::Vec3Array &vertices);
 
+  /// 由顶点创建三角面片网
+  /// \param vertices
+  /// \return
   static btBvhTriangleMeshShape *asBtBvhTriangleMeshShape(std::vector<osg::Vec3> &vertices);
+
+  /// 选取地形瓦片的缩放等级
+  /// \return
+  [[nodiscard]] int getSelectedTerrainTileLod() const;
+
+  /// 设置选取地形瓦片的缩放等级
+  /// \param selectedTerrainTileLod
+  void setSelectedTerrainTileLod(int selectedTerrainTileLod);
+
+  /// 在物理引擎世界中创建地形瓦片
+  /// 三个参数分别对应 osgEarth::TerrainCallback 的三个参数
+  /// \param tileKey
+  /// \param graph
+  /// \param context
+  /// \return 地形瓦片在刚体池中的 key
+  const osg::Node *createTerrainTile(const osgEarth::TileKey &tileKey,
+									 osg::Node *graph,
+									 osgEarth::TerrainCallbackContext &context);
 
   class BulletTerrainChangedCallback : public osgEarth::TerrainCallback {
 	BulletManager *_bulletManager = nullptr;
@@ -126,6 +171,18 @@ class BulletManager {
 	/// \param tileKey
 	/// \param graph
 	void onTileUpdate(const osgEarth::TileKey &tileKey, osg::Node *graph, osgEarth::TerrainCallbackContext &) override;
+  };
+
+  struct FeatureNodeCallback : public osg::NodeCallback {
+	BulletManager *_bulletManager;
+
+	FeatureNodeCallback(BulletManager *bulletManager) : _bulletManager(bulletManager) {}
+
+	void operator()(osg::Node *n, osg::NodeVisitor *nv) {
+	  traverse(n, nv);
+	  OSG_ALWAYS << "FeatureNodeCallback operator()" << std::endl;
+	  osgEarth::FeatureNode *featureNode = dynamic_cast<osgEarth::FeatureNode *>(n);
+	}
   };
 };
 } // MultiLayerTileMap

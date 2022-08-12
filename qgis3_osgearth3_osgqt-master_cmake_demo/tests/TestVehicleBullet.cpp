@@ -24,6 +24,7 @@
 
 #include "catch.hpp"
 #include "MultiLayerTileMap/BulletManager.h"
+#include "MultiLayerTileMap/HciCoordinate.h"
 
 using namespace MultiLayerTileMap;
 using namespace osgEarth::Util;
@@ -126,13 +127,13 @@ TEST_CASE("addElevationLayer") {
   REQUIRE(mapLayerManager->findLayerByName(layerName) != nullptr);
 }
 
-TEST_CASE("createTerrain") {
+TEST_CASE("createTerrainByOGRFeatureSource") {
   PAUSE
   const std::string url = "./data/demo06/AGM/AGM_BeiluRiver.shp";
   OGRFeatureSource* ogrSource = new OGRFeatureSource();
   ogrSource->setURL(url);
   REQUIRE(ogrSource->open().isOK());
-  REQUIRE(bulletManager->createTerrain(ogrSource));
+  REQUIRE(bulletManager->createTerrainByOGRFeatureSource(ogrSource));
 }
 
 class SampleRigidUpdater : public osgGA::GUIEventHandler {
@@ -191,13 +192,24 @@ class SampleRigidUpdater : public osgGA::GUIEventHandler {
 	switch (ea.getEventType()) {
 	  case osgGA::GUIEventAdapter::PUSH:
 		if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) {
+		  osg::Vec3 clickWorldXYZ = HciCoordinate::screenToWorld(ea.getX(), ea.getY(), viewer);
+		  OSG_ALWAYS << ea.getX() << " " << ea.getY() << "->screenToWorld->" << clickWorldXYZ << std::endl;
+		  OSG_ALWAYS << clickWorldXYZ << "->worldToWGS84->" << HciCoordinate::worldToWGS84(clickWorldXYZ) << std::endl;
+		  OSG_ALWAYS << clickWorldXYZ << "->worldToScreen->" << HciCoordinate::worldToScreen(clickWorldXYZ, viewer->getCamera()) << std::endl;
+		  OSG_ALWAYS << clickWorldXYZ << "->worldToENU->" << HciCoordinate::worldToENU(clickWorldXYZ, clickWorldXYZ) << std::endl;
+
 		  osg::Vec3 eye, center, up, dir;
 		  view->getCamera()->getViewMatrixAsLookAt(eye, center, up);
-		  OSG_ALWAYS << "Fire: " << eye << std::endl;
+		  OSG_ALWAYS << "Fire eye: " << eye << std::endl;
 		  dir = center - eye;
 		  dir.normalize();
 		  auto *pShape = new osg::Box(osg::Vec3(), 100.0f);
-		  btRigidBody *body = addPhysicsBox(pShape, eye+dir*10, dir*1000.0f, 2.0);
+		  osg::Vec3 pos = eye+dir*10;
+		  pos = HciCoordinate::worldToWGS84(pos);
+		  pos.z() = 5000;
+		  osg::Vec3 result = HciCoordinate::wGS84ToWorld(pos);
+		  OSG_ALWAYS << pos << "->wGS84ToWorld->" << HciCoordinate::wGS84ToWorld(pos) << std::endl;
+		  btRigidBody *body = addPhysicsBox(pShape, result, {0, 0, 0}, 2.0);
 		  addOSGShape(body, pShape);
 		}
 		break;
